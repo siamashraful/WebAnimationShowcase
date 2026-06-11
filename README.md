@@ -1,5 +1,7 @@
 # Motion Studio — Framer-style Animations
 
+**Live demo: https://siamashraful.github.io/WebAnimationShowcase/**
+
 A single-file animation playground: spring physics, scroll choreography, 3D parallax,
 magnetic buttons, a remixable theme system, and per-card interactive effects — all
 hand-rolled in one `index.html` with zero dependencies.
