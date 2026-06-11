@@ -96,7 +96,9 @@
                 inset 1.5px 1.5px 1px -1px rgba(255,255,255,.85),  /* light entry */
                 inset -1.5px -1.5px 1px -1px rgba(255,255,255,.45),/* light exit */
                 0 8px 24px rgba(14,14,16,.12);
-    transition: background .4s ease;
+    transition: background .4s ease,
+                transform .55s var(--spring),
+                border-radius .4s ease;
   }
   /* a touch more body past the hero so ink stays readable over busy
      content (and over the dark DEPTH band) — still clear, never frosted */
@@ -104,32 +106,30 @@
     background: color-mix(in srgb, var(--paper) 50%, transparent);
   }
   nav .logo { font-weight: 800; font-size: 18px; letter-spacing: -.02em; padding: 12px 22px; }
-  /* tight gap — the links carry their own bubble padding now */
-  nav .links { display: flex; gap: 4px; font-size: 14px; padding: 8px 12px; }
-  /* each link is its own glass bubble: it materializes on hover with the
-     site spring, specular lip and all, like a droplet rising off the slab */
+  nav .links { display: flex; gap: 2px; font-size: 14px; padding: 8px 10px; }
+  /* MERGED state (top of page): the two pills slide in to meet at screen
+     centre and square off their inner corners, reading as one continuous
+     segmented bar. translateX uses 100% = the element's own width, so the
+     maths holds at any font/remix width. On scroll the transforms release
+     and they spring back apart to the edges as two separate pills. */
+  nav:not(.scrolled) .logo  { transform: translateX(calc(50vw - 100% - 28px)); border-radius: 100px 0 0 100px; }
+  nav:not(.scrolled) .links { transform: translateX(calc(100% - 50vw + 28px)); border-radius: 0 100px 100px 0; }
+  /* a single thin underline that glides from item to item on the spring —
+     it stretches to the new word's width as it travels and settles, so the
+     hover reads as one continuous flowing line. placed/sized in JS */
+  .nav-ind {
+    position: absolute; left: 0; top: 0;
+    height: 2px; border-radius: 2px;
+    background: color-mix(in srgb, var(--ink) 65%, transparent);
+    opacity: 0; pointer-events: none; z-index: 0;
+    transition: transform .5s var(--spring), width .5s var(--spring),
+                opacity .3s ease;
+  }
+  /* links sit above the highlight; hovering one parts its neighbours (JS) */
   nav .links a {
-    color: inherit; text-decoration: none; position: relative;
+    color: inherit; text-decoration: none; position: relative; z-index: 1;
     padding: 6px 14px; border-radius: 100px;
-    transition: background .35s ease, box-shadow .35s ease,
-                transform .4s var(--spring);
-  }
-  nav .links a:hover {
-    background: rgba(255,255,255,.3);
-    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.4),
-                inset 1px 1px 1px -.5px rgba(255,255,255,.9),
-                0 2px 8px rgba(14,14,16,.08);
-    transform: scale(1.07);
-  }
-  nav .links a:active { transform: scale(.94); }
-  nav .links a::after {
-    content: ""; position: absolute; left: 14px; bottom: 5px;
-    width: calc(100% - 28px); height: 1.5px; background: currentColor;
-    transform: scaleX(0); transform-origin: 100% 50%;
-    transition: transform .4s var(--ease-out);
-  }
-  nav .links a:hover::after {
-    transform: scaleX(1); transform-origin: 0 50%;
+    transition: transform .45s var(--spring);
   }
 
   /* ───────── hero ───────── */
@@ -1335,6 +1335,40 @@
   /* ── rAF loop: cursor trail, magnetic spring, progress, parallax, velocity skew ── */
   const progress = document.getElementById('progress');
   const navEl = document.querySelector('nav');
+
+  /* ── nav: sliding glass highlight + neighbour spread on hover ── */
+  const navLinksEl = document.querySelector('nav .links');
+  const navLinkEls = [...navLinksEl.querySelectorAll('a')];
+  const navInd = document.createElement('span');
+  navInd.className = 'nav-ind';
+  navLinksEl.prepend(navInd);
+  if (matchMedia('(hover: hover)').matches) {
+    const insetX = 12;   // pull the line in to roughly the word's width
+    navLinkEls.forEach((a, i) => {
+      a.addEventListener('pointerenter', () => {
+        // fit the line under this link — a one-off pointer event, so these
+        // layout reads are fine (never happens per rAF frame). moving between
+        // links just re-aims it (opacity stays up), so it glides, not blinks.
+        navInd.style.width = (a.offsetWidth - insetX * 2) + 'px';
+        navInd.style.transform =
+          `translate(${a.offsetLeft + insetX}px, ${a.offsetTop + a.offsetHeight - 7}px)`;
+        navInd.style.opacity = '1';
+        // neighbours part to make room: items before slide left, after slide
+        // right — most for the nearest, tapering off with distance
+        navLinkEls.forEach((b, j) => {
+          const d = j - i;
+          if (d === 0) { b.style.transform = 'translateX(0)'; return; }
+          const mag = Math.max(6, 14 - (Math.abs(d) - 1) * 4);
+          b.style.transform = `translateX(${Math.sign(d) * mag}px)`;
+        });
+      });
+    });
+    navLinksEl.addEventListener('pointerleave', () => {
+      navInd.style.opacity = '0';
+      navLinkEls.forEach(b => { b.style.transform = ''; });
+    });
+  }
+
   const hint = document.querySelector('.scroll-hint');
   const layers = [...document.querySelectorAll('.type-layer')];
   const band = document.querySelector('.parallax-band');
