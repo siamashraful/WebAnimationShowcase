@@ -101,18 +101,18 @@
     transition: padding .4s var(--ease-out);
   }
   nav.scrolled { padding: 10px 20px; }
-  /* liquid glass: a nearly clear material that REFRACTS the page behind it.
-     The warp comes from an SVG turbulence→displacement filter referenced on
-     backdrop-filter (#liquid-glass, defined inline in the markup); the lens
-     bevel comes from a stack of tight inset shadows — sharp dark rims at the
-     four edges plus a soft inner vignette — and a faint outer white halo.
-     Ported from a shadcn LiquidButton into vanilla CSS. */
+  /* liquid glass: a nearly clear, blurred material that gently REFRACTS the
+     page behind it (the #liquid-glass turbulence→displacement filter, tuned
+     to a faint shimmer so Chrome doesn't read wavy), plus a lens bevel from a
+     stack of tight inset shadows — sharp dark rims, a soft inner vignette and
+     a faint outer halo. Ported from a shadcn LiquidButton. Engines without
+     backdrop url() support fall back to blur + bevel. */
   nav .logo, nav .links {
     pointer-events: auto;
     position: relative;
     background: color-mix(in srgb, var(--paper) 10%, transparent);
-    backdrop-filter: blur(3px) saturate(1.6) url("#liquid-glass");
-    -webkit-backdrop-filter: blur(3px) saturate(1.6);
+    backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass");
+    -webkit-backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass");
     border-radius: 100px;
     box-shadow: var(--glass-rim-dark);             /* clear-glass lens bevel */
     transition: background .4s ease,
@@ -351,11 +351,11 @@
     background: color-mix(in srgb, var(--accent) 90%, transparent);
   }
   /* non-tinted button → REGULAR clear liquid glass, same recipe as the nav
-     pills: near-clear material, refracting backdrop, dark-inset lens bevel */
+     pills: near-clear blurred material, gentle refraction, dark-inset bevel */
   .btn.ghost {
     background: color-mix(in srgb, var(--paper) 10%, transparent); color: var(--ink);
-    -webkit-backdrop-filter: blur(3px) saturate(1.6);
-    backdrop-filter: blur(3px) saturate(1.6) url("#liquid-glass");
+    -webkit-backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass");
+    backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass");
     box-shadow: var(--glass-rim-dark);
   }
   .btn.ghost:hover {
@@ -1007,14 +1007,17 @@
 </head>
 <body>
 
-<!-- liquid-glass refraction filter: turbulence → displacement, referenced by
-     the nav pills' backdrop-filter. Ported from the shadcn LiquidButton. -->
+<!-- liquid-glass refraction: turbulence → displacement, referenced by the
+     glass backdrop-filters. Kept deliberately gentle (small scale, fine
+     noise) so it's a faint shimmer, not waves — Chrome renders url() on
+     backdrop-filter more aggressively than Safari, so it's tuned to stay
+     subtle there; engines without support just show blur + bevel. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <filter id="liquid-glass" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.012" numOctaves="2" seed="7" result="noise"/>
-      <feGaussianBlur in="noise" stdDeviation="2" result="blurred"/>
-      <feDisplacementMap in="SourceGraphic" in2="blurred" scale="40" xChannelSelector="R" yChannelSelector="B"/>
+    <filter id="liquid-glass" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.02" numOctaves="1" seed="7" result="noise"/>
+      <feGaussianBlur in="noise" stdDeviation="1.4" result="blurred"/>
+      <feDisplacementMap in="SourceGraphic" in2="blurred" scale="6" xChannelSelector="R" yChannelSelector="B"/>
     </filter>
   </defs>
 </svg>
