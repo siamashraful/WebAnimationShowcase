@@ -32,6 +32,18 @@
       inset 1px 1px 1px -.5px rgba(255,255,255,.6), inset -1px -1px 1px -.5px rgba(255,255,255,.6),
       inset 0 0 6px 6px rgba(255,255,255,.12), inset 0 0 2px 2px rgba(255,255,255,.06),
       0 0 12px rgba(0,0,0,.15);
+    /* frosted slab tint shared by the remix pill, its morph square and the
+       cube faces — one knob so the three surfaces can't drift apart */
+    --frost-1: color-mix(in srgb, var(--accent) 90%, transparent);
+    --frost-2: color-mix(in srgb, var(--accent-2) 90%, transparent);
+    /* remix-orb rhythm — re-rolled by remix() like every other tunable; the
+       two swirl ranges are kept disjoint so the blobs never sync up */
+    --orb-a: 4.1s;
+    --orb-b: 6.7s;
+    --orb-breathe: 5.6s;
+    /* die pip radius — the cube-face --pips gradients and the pip the orb
+       morphs into (2× this) both derive from it so they stay in sync */
+    --pip-r: 6px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -369,7 +381,11 @@
     overflow: hidden; white-space: nowrap;
     padding: 36px 0;
     border-top: 1px solid #e3e1db; border-bottom: 1px solid #e3e1db;
-    background: #fff;
+    /* --belt is both the belt background AND the outlined words' fill — the
+       paint-order trick below only works while the two stay identical, so
+       tint the belt here and the fill follows */
+    --belt: #fff;
+    background: var(--belt);
     touch-action: pan-y;    /* horizontal drag scrubs the belt, vertical still scrolls the page */
     user-select: none;
   }
@@ -385,8 +401,16 @@
     margin: 0 36px; color: var(--ink);
   }
   .marquee span:nth-child(even) {
-    -webkit-text-stroke: 1.5px var(--ink);
-    color: transparent;
+    /* The stroke is centred on the glyph edge, so on an 800-weight face with
+       negative tracking the inner halves cross at tight joins and wherever two
+       letters touch. Painting the fill OVER the stroke (paint-order) in the
+       belt's own colour hides every inner half — only the outer contour
+       survives. The stroke is 2× the wanted weight because the fill eats the
+       inner half; engines without paint-order on text fall back to the old
+       centred-stroke look (belt-coloured fill ≡ transparent on the belt). */
+    -webkit-text-stroke: 3px var(--ink);
+    color: var(--belt);
+    paint-order: stroke fill;
   }
 
   /* ───────── sections ───────── */
@@ -689,6 +713,11 @@
     top: 26%;
     font-size: clamp(56px, 9vw, 110px);
     color: transparent;
+    /* deliberately NOT the marquee's paint-order fill trick: that needs an
+       opaque fill matching the backdrop, and this stroke is translucent by
+       design over the band's dark layered background. Crossing strokes do
+       double to brighter joints, but at 22% alpha it reads as glow, not
+       defect — revisit only if the stroke ever goes opaque. */
     -webkit-text-stroke: 1.5px rgba(255,255,255,.22);
   }
   .type-layer.t-near {
@@ -773,15 +802,17 @@
     /* above the wipe (9000) so the tumbling die stays visible during it */
     position: fixed; bottom: 28px; right: 28px; z-index: 9200;
     display: flex; align-items: center; gap: 12px;
-    padding: 19px 34px; border-radius: 100px;
+    /* 14px vertical: the 32px orb is the tallest child now — this keeps the
+       pill the same overall height it had with 19px padding and text-height
+       content */
+    padding: 14px 34px; border-radius: 100px;
     border: none; cursor: none;
     font: 700 17px "Segoe UI", system-ui, sans-serif;
     /* tinted → FROSTED liquid glass: translucent gradient + blur + specular
-       lens rim, over the existing float shadow. The morph state resets to a
-       solid gradient, so the dice animation is unaffected. */
-    background: linear-gradient(120deg,
-      color-mix(in srgb, var(--accent) 90%, transparent),
-      color-mix(in srgb, var(--accent-2) 90%, transparent));
+       lens rim, over the existing float shadow. The morph square and the
+       cube faces reuse the same --frost tint, so pill and die read as one
+       material through the whole press choreography. */
+    background: linear-gradient(120deg, var(--frost-1), var(--frost-2));
     -webkit-backdrop-filter: blur(16px) saturate(1.5);
     backdrop-filter: blur(16px) saturate(1.5);
     color: #fff;
@@ -797,15 +828,63 @@
     white-space: nowrap;
     transition: opacity .35s ease;   /* fades in only after the pill has unfolded */
   }
-  /* idle routine — one shared 6.5s cycle: wiggle and shine start together
-     (0–11% / 0–20%), the ping launches near the end of the shine (16–46%),
-     then the button rests for the remainder of the cycle */
-  .remix-btn .die { animation: die-wiggle 6.5s ease-in-out infinite; }
-  @keyframes die-wiggle {
-    0%, 11%, 100% { transform: rotate(0); }
-    3.5% { transform: rotate(-20deg) scale(1.12); }
-    7%   { transform: rotate(14deg); }
-    9.5% { transform: rotate(-5deg); }
+  /* idle routine — a Siri-style orb where the die used to sit: a dark sphere
+     with a hot white core and two translucent accent blobs swirling over it.
+     The label stays static — the button's own shine sweep (::after, shared
+     6.5s cycle with the ping) is the only glint, so the text never competes
+     with the orb. */
+  .remix-btn .orb {
+    flex: none; position: relative;
+    width: 32px; height: 32px; border-radius: 50%;
+    overflow: hidden;
+    /* keeps the screen-blended blobs compositing against the orb only,
+       not the button gradient behind it */
+    isolation: isolate;
+    /* off-centre hot core over a dark base so the blobs read on any palette */
+    background:
+      radial-gradient(circle at 38% 36%, #fff 0 10%, rgba(255,255,255,.65) 24%, transparent 52%),
+      var(--ink);
+    /* the zero-size inset is a real entry so the press state's white flood
+       interpolates instead of jumping (shadow lists only animate when they
+       pair up inset-for-inset) */
+    box-shadow: 0 0 12px 1px color-mix(in srgb, var(--accent-2) 40%, transparent),
+                inset 0 0 0 0 rgba(255,255,255,0);
+    /* the breathing lives HERE, slow and eased — not in the blob keyframes,
+       where a linear scale ramp reversed direction instantly at its peak and
+       made the swirl lurch */
+    animation: orb-breathe var(--orb-breathe) ease-in-out infinite;
+    transition: opacity .2s ease, width .5s var(--spring), height .5s var(--spring),
+                box-shadow .45s ease;
+  }
+  @keyframes orb-breathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.05); }
+  }
+  /* two blurred colour blobs counter-rotate at constant speed — the periods
+     (--orb-a / --orb-b, re-rolled by remix() from disjoint ranges) never
+     match, so the composition drifts and never repeats; screen blending
+     keeps the core bright wherever they cross it */
+  .remix-btn .orb::before,
+  .remix-btn .orb::after {
+    content: ""; position: absolute; inset: -15%;
+    mix-blend-mode: screen;
+    filter: blur(3px);
+    transition: opacity .25s ease;   /* blobs fade out as the press shrinks the orb */
+  }
+  .remix-btn .orb::before {
+    background:
+      radial-gradient(45% 60% at 30% 35%, var(--accent-2) 0, transparent 70%),
+      radial-gradient(50% 45% at 70% 60%, var(--accent) 0, transparent 70%);
+    animation: orb-swirl var(--orb-a) linear infinite;
+  }
+  .remix-btn .orb::after {
+    background:
+      radial-gradient(55% 45% at 60% 30%, var(--accent-3) 0, transparent 70%),
+      radial-gradient(40% 55% at 35% 70%, var(--accent-2) 0, transparent 72%);
+    animation: orb-swirl var(--orb-b) linear infinite reverse;
+  }
+  @keyframes orb-swirl {
+    to { transform: rotate(1turn); }
   }
   .remix-btn::after {
     content: ""; position: absolute; inset: 0; border-radius: inherit;
@@ -814,14 +893,37 @@
     animation: btn-shine 6.5s ease-in-out infinite;
     pointer-events: none;
   }
-  /* shine sweeps alongside the wiggle */
+  /* shine opens the shared 6.5s idle cycle; the ping launches as it ends */
   @keyframes btn-shine {
     0%        { background-position: 180% 0; }
     20%, 100% { background-position: -80% 0; }
   }
   /* no idle theatrics while morphed into the die */
   .remix-btn.morphing::after { animation: none; opacity: 0; }
-  .remix-btn.morphing .die { animation: none; }
+  /* press: flex centring slides the orb to the middle as the pill collapses,
+     while it shrinks to pip size and a white inset floods the sphere — the
+     orb BECOMES the flat square's single pip. The cube's own f1 pip takes
+     over at the spin3d swap. */
+  .remix-btn.morphing .orb {
+    width: calc(var(--pip-r) * 2); height: calc(var(--pip-r) * 2);
+    animation: none;   /* breathing off mid-morph */
+    box-shadow: 0 0 0 0 transparent, inset 0 0 0 calc(var(--pip-r) * 2) #fff;
+    /* the shrink follows the pill's non-overshooting curve — on --spring the
+       pip dips below target and bounces while the pill eases, the exact
+       artifact the pill's own override exists to kill */
+    transition: opacity .2s ease, width .5s var(--ease-out),
+                height .5s var(--ease-out), box-shadow .45s ease;
+  }
+  .remix-btn.morphing .orb::before,
+  .remix-btn.morphing .orb::after,
+  .remix-btn.unfolding .orb::before,
+  .remix-btn.unfolding .orb::after {
+    opacity: 0;
+    /* hidden loops don't spin — same contract as .offstage / .remix-tip */
+    animation-play-state: paused;
+  }
+  .remix-btn.spin3d .orb { opacity: 0; }
+  .remix-btn.unfolding .orb { opacity: 0; transition: none; }
   /* morphed state: pill collapses to a square.
      width/height are driven inline from JS — a class rule here would
      lose to the inline size freeze that makes the morph animatable */
@@ -829,24 +931,27 @@
     padding: 0; gap: 0;
     justify-content: center;
     border-radius: 17px;
-    /* match the cube-face design so the square→cube swap is seamless */
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    /* the size morph must NOT ride --spring: its overshoot drops width below
+       the 62px target (coming from ~3× that) while height, already ≈62,
+       barely moves — so the "square" reads as a tall rectangle for a beat.
+       A plain ease-out keeps width and height converging in step; the base
+       spring still rules the unfold once this class is gone. */
+    transition: transform .45s var(--spring), box-shadow .45s var(--spring),
+                width .5s var(--ease-out), height .5s var(--ease-out),
+                border-radius .5s var(--ease-out), padding .5s var(--ease-out),
+                gap .5s var(--ease-out);
+    /* same frosted recipe as the resting pill (the pill's own backdrop blur
+       and glass rim stay active underneath), and matches the cube-face
+       design so the square→cube swap is seamless */
+    background: linear-gradient(135deg, var(--frost-1), var(--frost-2));
     border: 1px solid rgba(255,255,255,.35);
   }
   .remix-btn.morphing .label {
     max-width: 0; opacity: 0;
     transition: max-width .3s var(--ease-out), opacity .2s ease;   /* collapse immediately on press */
   }
-  /* square phase shows a single CSS pip — dice glyphs have lopsided
-     font metrics and never sit truly centered */
-  .remix-btn.morphing .die {
-    position: absolute; inset: 0;
-    font-size: 0;   /* hide the emoji */
-    background-image: radial-gradient(circle 6px at 50% 50%, #fff 0 88%, transparent 100%);
-  }
-  /* unfold phase: pill expands empty first, then text + dice fade back in */
-  .remix-btn.unfolding .label,
-  .remix-btn.unfolding .die { opacity: 0; transition: none; }
+  /* unfold phase: pill expands empty first, then text + orb fade back in */
+  .remix-btn.unfolding .label { opacity: 0; transition: none; }
 
   /* 3D die — six real faces, shown once the pill has collapsed */
   .remix-btn .cube {
@@ -858,37 +963,45 @@
   .remix-btn .cube .face {
     position: absolute; inset: 0;
     /* pips drawn as gradients — always dead-center, unlike dice glyphs */
-    background-image: var(--pips), linear-gradient(135deg, var(--accent), var(--accent-2));
+    background-image: var(--pips), linear-gradient(135deg, var(--frost-1), var(--frost-2));
     border-radius: 14px;
     border: 1px solid rgba(255,255,255,.35);
+    /* frosted like the pill: --frost tint + specular rim. No backdrop-filter
+       here — blur sampling inside a preserve-3d scene is non-interop
+       (engines flatten or skip it); the tint + rim carry the glass read
+       on a tumbling face */
+    box-shadow: var(--glass-rim-light);
+    /* the faces are translucent now — without this the rear faces' pips
+       ghost through the front as faint dots while the die tumbles */
+    backface-visibility: hidden;
   }
   .face.f1 { transform: rotateY(0deg)   translateZ(31px);
-    --pips: radial-gradient(circle 6px at 50% 50%, #fff 0 88%, transparent 100%); }
+    --pips: radial-gradient(circle var(--pip-r) at 50% 50%, #fff 0 88%, transparent 100%); }
   .face.f2 { transform: rotateY(90deg)  translateZ(31px);
-    --pips: radial-gradient(circle 6px at 66% 34%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 34% 66%, #fff 0 88%, transparent 100%); }
+    --pips: radial-gradient(circle var(--pip-r) at 66% 34%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 34% 66%, #fff 0 88%, transparent 100%); }
   .face.f3 { transform: rotateY(180deg) translateZ(31px);
-    --pips: radial-gradient(circle 6px at 28% 28%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 50% 50%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 72% 72%, #fff 0 88%, transparent 100%); }
+    --pips: radial-gradient(circle var(--pip-r) at 28% 28%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 50% 50%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 72% 72%, #fff 0 88%, transparent 100%); }
   .face.f4 { transform: rotateY(-90deg) translateZ(31px);
-    --pips: radial-gradient(circle 6px at 32% 32%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 68% 32%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 32% 68%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 68% 68%, #fff 0 88%, transparent 100%); }
+    --pips: radial-gradient(circle var(--pip-r) at 32% 32%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 68% 32%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 32% 68%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 68% 68%, #fff 0 88%, transparent 100%); }
   .face.f5 { transform: rotateX(90deg)  translateZ(31px);
-    --pips: radial-gradient(circle 6px at 32% 32%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 68% 32%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 50% 50%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 32% 68%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 68% 68%, #fff 0 88%, transparent 100%); }
+    --pips: radial-gradient(circle var(--pip-r) at 32% 32%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 68% 32%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 50% 50%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 32% 68%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 68% 68%, #fff 0 88%, transparent 100%); }
   .face.f6 { transform: rotateX(-90deg) translateZ(31px);
-    --pips: radial-gradient(circle 6px at 34% 27%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 34% 50%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 34% 73%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 66% 27%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 66% 50%, #fff 0 88%, transparent 100%),
-            radial-gradient(circle 6px at 66% 73%, #fff 0 88%, transparent 100%); }
+    --pips: radial-gradient(circle var(--pip-r) at 34% 27%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 34% 50%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 34% 73%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 66% 27%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 66% 50%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle var(--pip-r) at 66% 73%, #fff 0 88%, transparent 100%); }
   /* spin phase: the flat square becomes a tumbling 3D cube */
   .remix-btn.spin3d {
     perspective: 340px;
@@ -896,7 +1009,6 @@
     box-shadow: none;
   }
   .remix-btn.spin3d::before { animation: none; opacity: 0; }
-  .remix-btn.spin3d .die { display: none; }
   .remix-btn.spin3d .cube {
     display: block;
     animation: cube-spin 1.2s linear infinite;
@@ -926,10 +1038,14 @@
     box-shadow: 0 16px 44px rgba(14,14,16,.35);
   }
   .remix-btn:active { transform: scale(.92); }
-  .remix-btn .die {
-    display: inline-block; font-size: 20px; line-height: 1;
-    transition: font-size .4s var(--spring), opacity .35s ease;
+  /* the pointer is necessarily on the button mid-press, so without these the
+     hover grow keeps the collapsing square (and the cube, whose translateZ
+     maths assume 62px) at 1.08× until the pointer happens to leave */
+  .remix-btn.morphing:hover {
+    transform: none;
+    box-shadow: var(--glass-rim-light), 0 12px 36px rgba(14,14,16,.3);
   }
+  .remix-btn.spin3d:hover { box-shadow: none; }   /* spin phase hides the slab entirely */
   @media (hover: none) { .remix-btn { cursor: pointer; } }
 
   /* tooltip — shown after hovering the button for 2s */
@@ -1151,7 +1267,7 @@
 </div>
 
 <button class="remix-btn magnetic" id="remixBtn" data-hover>
-  <span class="die">🎲</span><span class="label">Remix</span>
+  <span class="orb" aria-hidden="true"></span><span class="label">Remix</span>
   <span class="cube" aria-hidden="true">
     <span class="face f1"></span>
     <span class="face f2"></span>
@@ -1788,6 +1904,12 @@
 
     // marquee speed + direction
     marqSpeed = (Math.random() < .5 ? -1 : 1) * rr(.6, 2.2);
+
+    // remix-orb rhythm — swirl periods from disjoint ranges (a < 5.2 < 5.8 ≤ b)
+    // so the two blobs can never lock into sync, plus a fresh breathe
+    root.setProperty('--orb-a', rr(3.2, 5.2).toFixed(2) + 's');
+    root.setProperty('--orb-b', rr(5.8, 8.6).toFixed(2) + 's');
+    root.setProperty('--orb-breathe', rr(4.5, 7).toFixed(2) + 's');
 
     // reassign every reveal a random variant and replay it
     document.querySelectorAll('.reveal').forEach(el => {
