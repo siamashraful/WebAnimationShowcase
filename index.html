@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motion Studio — Framer-style Animations</title>
+<style>
+  :root {
+    --ink: #0e0e10;
+    --paper: #f7f6f3;
+    /* default: stock-market green — deep ticker green into bright gain green */
+    --accent: #047857;
+    --accent-2: #22c55e;
+    --accent-3: #84cc16;
+    --grey: #6b7280;
+    --radius: 20px;
+    --spring: cubic-bezier(.22, 1.4, .36, 1);
+    --ease-out: cubic-bezier(.16, 1, .3, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    overflow-x: hidden;
+    cursor: none;
+    transition: background .6s ease;
+  }
+
+  ::selection { background: var(--accent); color: #fff; }
+
+  /* ───────── custom cursor ───────── */
+  .cursor-dot, .cursor-ring {
+    position: fixed; top: 0; left: 0;
+    pointer-events: none; z-index: 9999;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .cursor-dot {
+    width: 8px; height: 8px;
+    background: var(--ink);
+  }
+  .cursor-ring {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--ink);
+    opacity: .35;
+    transition: width .35s var(--spring), height .35s var(--spring),
+                opacity .3s ease, border-color .3s ease;
+  }
+  body.cursor-grow .cursor-ring {
+    width: 64px; height: 64px;
+    opacity: .9; border-color: var(--accent);
+  }
+  @media (hover: none) {
+    body { cursor: auto; }
+    .cursor-dot, .cursor-ring { display: none; }
+  }
+
+  /* ───────── scroll progress bar ───────── */
+  .progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+    z-index: 1000;
+  }
+
+  /* ───────── nav ───────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 22px 48px;
+    z-index: 900;
+    mix-blend-mode: difference;
+    color: #fff;
+    border-bottom: 1px solid transparent;
+    transition: padding .4s var(--ease-out), color .3s ease,
+                background .4s ease, border-color .4s ease;
+  }
+  /* difference-blend is striking over the hero but unreadable over busy
+     mid-tone content — past the top, swap to a frosted ink-on-paper bar */
+  nav.scrolled {
+    mix-blend-mode: normal;
+    color: var(--ink);
+    background: color-mix(in srgb, var(--paper) 75%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-color: rgba(14,14,16,.08);
+    padding: 14px 48px;
+  }
+  nav .logo { font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
+  nav .links { display: flex; gap: 28px; font-size: 14px; }
+  nav .links a {
+    color: inherit; text-decoration: none; position: relative;
+  }
+  nav .links a::after {
+    content: ""; position: absolute; left: 0; bottom: -4px;
+    width: 100%; height: 1.5px; background: currentColor;
+    transform: scaleX(0); transform-origin: 100% 50%;
+    transition: transform .4s var(--ease-out);
+  }
+  nav .links a:hover::after {
+    transform: scaleX(1); transform-origin: 0 50%;
+  }
+
+  /* ───────── hero ───────── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center;
+    position: relative;
+    padding: 0 24px;
+  }
+  .hero h1 {
+    font-size: clamp(52px, 10vw, 140px);
+    font-weight: 800;
+    letter-spacing: -.04em;
+    line-height: .95;
+  }
+  .hero h1 .line {
+    display: block;
+    /* reveal mask: clips top/sides like overflow:hidden, but is open
+       .3em below the box so the g's descender renders un-clipped while
+       the lines keep their tight .95 spacing */
+    clip-path: inset(0 0 -0.3em 0);
+  }
+  .hero h1 .word {
+    display: inline-block;
+    transform: translateY(160%) rotate(6deg);
+    animation: word-in 1s var(--spring) forwards;
+  }
+  .hero h1 .line:nth-child(2) .word { animation-delay: .12s; }
+  /* optical nudge — "Design in" sits a touch left of the centered axis */
+  .hero h1 .line:first-child { transform: translateX(-.14em); }
+  .hero h1 .word.accent {
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  @keyframes word-in {
+    to { transform: translateY(0) rotate(0); }
+  }
+  .hero p {
+    margin-top: 28px; max-width: 460px;
+    color: var(--grey); font-size: 18px; line-height: 1.6;
+    opacity: 0; transform: translateY(24px);
+    animation: fade-up .9s var(--ease-out) .5s forwards;
+  }
+  @keyframes fade-up {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero .cta-row {
+    display: flex; gap: 16px; margin-top: 40px;
+    opacity: 0; transform: translateY(24px);
+    animation: fade-up .9s var(--ease-out) .7s forwards;
+  }
+
+  /* floating blobs behind hero */
+  .blob {
+    position: absolute; border-radius: 50%;
+    filter: blur(70px); opacity: .35; z-index: -1;
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+  .blob.b1 { width: 420px; height: 420px; background: var(--accent);   top: 8%;  left: 6%; }
+  .blob.b2 { width: 360px; height: 360px; background: var(--accent-2); bottom: 10%; right: 8%; animation-delay: -4s; }
+  .blob.b3 { width: 260px; height: 260px; background: var(--accent-3); top: 55%; left: 42%; animation-delay: -9s; }
+  @keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(60px, -50px) scale(1.18); }
+  }
+
+  /* scroll hint */
+  .scroll-hint {
+    position: absolute; bottom: 32px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px; letter-spacing: .25em; text-transform: uppercase;
+    color: var(--grey);
+    animation: bob 2s ease-in-out infinite;
+    transition: opacity .4s ease;
+    pointer-events: none;
+  }
+  .scroll-hint.hide { opacity: 0; }
+  /* dual chevron under the text, same hairline grey, pulsing downward */
+  .scroll-hint .chevrons { display: block; margin-top: 10px; }
+  .scroll-hint .chevrons span {
+    display: block; width: 9px; height: 9px;
+    margin: -5px auto 0;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+    animation: chev-pulse 2s ease-in-out infinite;
+  }
+  .scroll-hint .chevrons span:nth-child(2) { animation-delay: .18s; }
+  @keyframes chev-pulse {
+    0%, 100% { opacity: .25; }
+    50%      { opacity: 1; }
+  }
+  @keyframes bob {
+    0%, 100% { transform: translate(-50%, 0); }
+    50%      { transform: translate(-50%, 10px); }
+  }
+
+  /* ───────── buttons (magnetic + spring hover) ───────── */
+  .btn {
+    display: inline-block;
+    padding: 16px 34px;
+    border-radius: 100px;
+    font-size: 15px; font-weight: 600;
+    text-decoration: none;
+    border: none;
+    transition: transform .45s var(--spring), box-shadow .45s var(--spring),
+                background .3s ease, color .3s ease;
+    will-change: transform;
+  }
+  .btn.primary {
+    background: var(--ink); color: #fff;
+    box-shadow: 0 4px 14px rgba(14,14,16,.18);
+  }
+  .btn.primary:hover {
+    transform: scale(1.06);
+    box-shadow: 0 14px 34px rgba(79,70,229,.35);
+    background: var(--accent);
+  }
+  .btn.ghost {
+    background: transparent; color: var(--ink);
+    box-shadow: inset 0 0 0 1.5px var(--ink);
+  }
+  .btn.ghost:hover { transform: scale(1.06); background: var(--ink); color: #fff; }
+  .btn:active { transform: scale(.96); }
+
+  /* ───────── marquee ───────── */
+  .marquee {
+    overflow: hidden; white-space: nowrap;
+    padding: 36px 0;
+    border-top: 1px solid #e3e1db; border-bottom: 1px solid #e3e1db;
+    background: #fff;
+    touch-action: pan-y;    /* horizontal drag scrubs the belt, vertical still scrolls the page */
+    user-select: none;
+  }
+  .marquee .track {
+    display: inline-block;
+    will-change: transform;   /* JS-driven endless belt — no keyframe reset */
+  }
+  .marquee span {
+    font-size: 34px; font-weight: 800; letter-spacing: -.02em;
+    margin: 0 36px; color: var(--ink);
+  }
+  .marquee span:nth-child(even) {
+    -webkit-text-stroke: 1.5px var(--ink);
+    color: transparent;
+  }
+
+  /* ───────── sections ───────── */
+  section.block { padding: 140px 48px; max-width: 1200px; margin: 0 auto; }
+  .eyebrow {
+    font-size: 13px; font-weight: 700; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--accent);
+    margin-bottom: 16px;
+  }
+  h2.title {
+    font-size: clamp(34px, 5vw, 60px);
+    font-weight: 800; letter-spacing: -.03em; line-height: 1.05;
+    max-width: 640px;
+  }
+
+  /* scroll-reveal base states (JS toggles .in) */
+  .reveal {
+    opacity: 0; transform: translateY(56px);
+    transition: opacity .9s var(--ease-out), transform .9s var(--ease-out);
+  }
+  .reveal.from-left  { transform: translateX(-72px); }
+  .reveal.from-right { transform: translateX(72px); }
+  .reveal.zoom       { transform: scale(.82); }
+  .reveal.flip       { transform: perspective(900px) rotateX(28deg) translateY(40px); transform-origin: 50% 100%; }
+  .reveal.in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* stagger children */
+  .stagger > * {
+    opacity: 0; transform: translateY(36px);
+    transition: opacity .7s var(--ease-out), transform .7s var(--spring);
+  }
+  .stagger.in > * { opacity: 1; transform: none; }
+  .stagger.in > *:nth-child(1) { transition-delay: .05s; }
+  .stagger.in > *:nth-child(2) { transition-delay: .15s; }
+  .stagger.in > *:nth-child(3) { transition-delay: .25s; }
+  .stagger.in > *:nth-child(4) { transition-delay: .35s; }
+  .stagger.in > *:nth-child(5) { transition-delay: .45s; }
+  .stagger.in > *:nth-child(6) { transition-delay: .55s; }
+
+  /* ───────── cards (3D tilt) ───────── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 28px; margin-top: 56px;
+  }
+  .card {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 38px 32px;
+    border: 1px solid #e8e6e0;
+    transition: transform .5s var(--spring), box-shadow .5s var(--spring);
+    transform-style: preserve-3d;
+    will-change: transform;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;   /* stays rounded when the depth card unclips */
+    background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%),
+                rgba(79,70,229,.08), transparent 45%);
+    opacity: 0; transition: opacity .4s ease;
+  }
+  .card:hover::before { opacity: 1; }
+  .card:hover {
+    box-shadow: 0 24px 60px rgba(14,14,16,.12);
+  }
+  .card .icon {
+    width: 54px; height: 54px; border-radius: 14px;
+    display: grid; place-items: center;
+    margin-bottom: 22px;
+    color: var(--accent);          /* vector icons inherit the live accent */
+    background: transparent;       /* blends with the card surface */
+    transform: translateZ(40px);
+    transition: transform .5s var(--spring), color .3s ease;
+  }
+  .card .icon svg { display: block; }
+  .card:hover .icon { transform: translateZ(40px) scale(1.15) rotate(-6deg); }
+  .card .icon:active { transform: translateZ(40px) scale(.88); }
+  /* post-effect cooldown: hover tilt stays disarmed until the cursor
+     leaves and re-enters, so the animation's resting pose holds still */
+  .card.fx-cooldown:hover .icon { transform: translateZ(40px); }
+
+  /* ── icon press effects — whole-card performances, one per concept ── */
+
+  /* SPRING: jelly squash-and-stretch on the card while the icon spring-spins */
+  .card.fx-spring { animation: fx-jelly .95s var(--spring); }
+  @keyframes fx-jelly {
+    0%   { transform: scale(1, 1); }
+    20%  { transform: scale(1.09, .84); }
+    38%  { transform: scale(.93, 1.12); }
+    55%  { transform: scale(1.05, .95); }
+    72%  { transform: scale(.985, 1.025); }
+    100% { transform: scale(1, 1); }
+  }
+  /* wound-spring release: wind up against the spin direction, then one
+     fast continuous unwind with a single overshoot — per-keyframe easings
+     keep the rotation velocity continuous (no segment-by-segment jitter) */
+  .card.fx-spring .icon { animation: fx-spring-icon 1.1s both; }
+  @keyframes fx-spring-icon {
+    0%   { transform: rotate(0) scale(1);          animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
+    20%  { transform: rotate(38deg) scale(.84);    animation-timing-function: cubic-bezier(.5, 0, .15, 1); }
+    70%  { transform: rotate(-388deg) scale(1.14); animation-timing-function: cubic-bezier(.35, 0, .35, 1); }
+    88%  { transform: rotate(-348deg) scale(.97);  animation-timing-function: ease-out; }
+    100% { transform: rotate(-360deg) scale(1); }
+  }
+
+  /* MAGNET: the title's letters are pulled into orbit around the icon (JS) */
+
+  /* FLIP: first a tilt tour — the card sweeps through its perspective
+     corners exactly like cursor tracking would drive it (the concept
+     demo), levels for a beat, then finishes with the full 360° flip */
+  .card.fx-flip { animation: fx-flip 2.2s both; }
+  @keyframes fx-flip {
+    0%   { transform: perspective(900px) rotateX(0) rotateY(0);
+           animation-timing-function: cubic-bezier(.4, 0, .25, 1); }
+    14%  { transform: perspective(900px) rotateX(12deg) rotateY(-15deg) scale(1.04);   /* top-left corner */
+           animation-timing-function: cubic-bezier(.45, 0, .45, 1); }
+    30%  { transform: perspective(900px) rotateX(12deg) rotateY(15deg) scale(1.04);    /* sweep to top-right */
+           animation-timing-function: cubic-bezier(.45, 0, .45, 1); }
+    45%  { transform: perspective(900px) rotateX(-12deg) rotateY(0) scale(1.04);       /* dip to the bottom */
+           animation-timing-function: cubic-bezier(.45, 0, .35, 1); }
+    56%  { transform: perspective(900px) rotateX(0) rotateY(0) scale(1.02);            /* level — a beat */
+           animation-timing-function: cubic-bezier(.55, 0, .2, 1); }
+    100% { transform: perspective(900px) rotateX(0) rotateY(360deg); }                 /* …and the flip */
+  }
+
+  /* CASCADE: the card literally scrolls — content exits upward, re-enters
+     from below with stagger and spring, while a scrollbar thumb rides the
+     card's right edge tracking the scroll */
+  .card.fx-cascade > * { animation: fx-scroll .9s both; }
+  .card.fx-cascade > *:nth-child(2) { animation-delay: .1s; }
+  .card.fx-cascade > *:nth-child(3) { animation-delay: .2s; }
+  @keyframes fx-scroll {
+    0%   { opacity: 1; transform: translateY(0);
+           animation-timing-function: cubic-bezier(.55, 0, .85, .5); }
+    28%  { opacity: 0; transform: translateY(-32px); }
+    34%  { opacity: 0; transform: translateY(48px);
+           animation-timing-function: cubic-bezier(.2, .9, .3, 1.18); }
+    74%  { opacity: 1; transform: translateY(-6px);
+           animation-timing-function: ease-out; }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .card.fx-cascade::after {
+    content: ""; position: absolute; right: 8px; top: 10px;
+    width: 4px; height: 38px; border-radius: 2px;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    animation: fx-scrollbar 1.1s cubic-bezier(.45, 0, .25, 1) forwards;
+  }
+  @keyframes fx-scrollbar {
+    0%   { top: 10px; opacity: 0; }
+    12%  { opacity: 1; }
+    82%  { opacity: 1; }
+    100% { top: calc(100% - 48px); opacity: 0; }
+  }
+
+  /* DEPTH: true 3D parallax — layers sit at real Z depths (icon toward the
+     viewer, heading mid-plane, paragraph recessed and defocused) while the
+     card sways in perspective like a camera orbiting the scene. The
+     parallax comes from actual projection, not hand-tuned offsets.
+     overflow:hidden would flatten the 3D space, so it's lifted here. */
+  .card.fx-depth { overflow: visible; animation: fx-cam 1.6s both; }
+  @keyframes fx-cam {
+    0%   { transform: perspective(800px) rotateX(0) rotateY(0);
+           animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+    28%  { transform: perspective(800px) rotateY(-16deg) rotateX(7deg) scale(1.03);
+           animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
+    62%  { transform: perspective(800px) rotateY(14deg) rotateX(-5deg) scale(1.03);
+           animation-timing-function: cubic-bezier(.45, 0, .2, 1); }
+    100% { transform: perspective(800px) rotateX(0) rotateY(0); }
+  }
+  /* starts and lands at Z=0 — identical projection to the flat rendering,
+     so adding/removing the class causes zero visual shift. (Resting
+     translateZ(40px) is inert while flattened but would project once the
+     card's 3D space opens, jumping the icon.) */
+  .card.fx-depth .icon { animation: fx-lift-near 1.6s both; }
+  @keyframes fx-lift-near {
+    0%, 100% { transform: translateZ(0); }
+    18%, 82% { transform: translateZ(72px) scale(1.18);
+               filter: drop-shadow(0 34px 24px rgba(14,14,16,.5)); }
+  }
+  .card.fx-depth h3 { animation: fx-lift-mid 1.6s both; }
+  @keyframes fx-lift-mid {
+    0%, 100% { transform: translateZ(0); }
+    18%, 82% { transform: translateZ(42px); }
+  }
+  .card.fx-depth p { animation: fx-lift-far 1.6s both; }
+  @keyframes fx-lift-far {
+    0%, 100% { transform: translateZ(0); filter: blur(0); opacity: 1; }
+    18%, 82% { transform: translateZ(-56px); filter: blur(1.6px); opacity: .72; }
+  }
+
+  /* SKEW: a launch — anticipation crouch, explosive dash with chromatic
+     aberration on the text, overshoot landing. JS adds manga speed lines
+     and ghost afterimages of the bolt. */
+  .card.fx-skew { animation: fx-dash .9s both; }
+  @keyframes fx-dash {
+    0%   { transform: translateX(0) skewX(0);
+           animation-timing-function: cubic-bezier(.55, 0, .7, .4); }
+    18%  { transform: translateX(-16px) skewX(9deg) scale(.985);   /* crouch */
+           animation-timing-function: cubic-bezier(.6, 0, .25, 1); }
+    42%  { transform: translateX(52px) skewX(-17deg);              /* dash! */
+           animation-timing-function: cubic-bezier(.3, .7, .3, 1); }
+    70%  { transform: translateX(-9px) skewX(5deg);                /* overshoot */
+           animation-timing-function: ease-out; }
+    100% { transform: translateX(0) skewX(0); }
+  }
+  .card.fx-skew h3 { animation: fx-whip .9s both .04s; }
+  .card.fx-skew p  { animation: fx-whip .9s both .09s; }
+  @keyframes fx-whip {
+    0%   { transform: skewX(0); text-shadow: none;
+           animation-timing-function: cubic-bezier(.55, 0, .7, .4); }
+    18%  { transform: skewX(7deg); text-shadow: none;
+           animation-timing-function: cubic-bezier(.6, 0, .25, 1); }
+    42%  { transform: skewX(-13deg) translateX(10px);              /* channel split at peak speed */
+           text-shadow: -4px 0 rgba(244,63,94,.5), 4px 0 rgba(14,165,233,.5);
+           animation-timing-function: cubic-bezier(.3, .7, .3, 1); }
+    70%  { transform: skewX(4deg);
+           text-shadow: -1px 0 rgba(244,63,94,.22), 1px 0 rgba(14,165,233,.22);
+           animation-timing-function: ease-out; }
+    100% { transform: skewX(0); text-shadow: none; }
+  }
+  .card.fx-skew .icon { animation: fx-bolt .9s ease-out; }
+  @keyframes fx-bolt {
+    0%, 100% { filter: none; }
+    20% { filter: brightness(2) drop-shadow(0 0 16px rgba(250,204,21,.9));
+          transform: scale(1.3) rotate(-10deg); }
+    48% { filter: brightness(1.4); transform: scale(1.08); }
+  }
+  /* magnet card letters — inline-block so they can translate; words stay
+     wrapped as units so the text layout never reflows */
+  .mag-w { display: inline-block; }
+  .mag-l { display: inline-block; will-change: transform; }
+
+  .card.fx-skew::after {
+    content: ""; position: absolute; top: 0; bottom: 0; left: -45%; width: 38%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent);
+    animation: fx-streak .5s ease-out forwards;
+  }
+  @keyframes fx-streak { to { left: 110%; } }
+  .card h3 { font-size: 20px; margin-bottom: 10px; letter-spacing: -.01em; }
+  .card p  { color: var(--grey); font-size: 15px; line-height: 1.65; }
+
+  /* ───────── parallax band ───────── */
+  .parallax-band {
+    position: relative;
+    padding: 100px 48px;
+    min-height: 85vh;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    background: var(--ink);
+    color: #fff;
+    overflow: hidden;
+    text-align: center;
+  }
+  .parallax-band h2 {
+    font-size: clamp(36px, 6vw, 80px);
+    font-weight: 800; letter-spacing: -.03em;
+    position: relative; z-index: 2;
+  }
+  .parallax-band p {
+    position: relative; z-index: 2;
+    margin: 22px auto 0; max-width: 460px;
+    color: #9ca3af; font-size: 17px; line-height: 1.6;
+  }
+  /* typographic depth: the same word at three distances — size, focus and
+     speed all encode how far away each row is */
+  .parallax-band .type-layer {
+    position: absolute; left: 50%;
+    white-space: nowrap;
+    font-weight: 800; letter-spacing: -.02em; line-height: 1;
+    will-change: transform; z-index: 1;
+    pointer-events: none; user-select: none;
+  }
+  .type-layer.t-far {
+    top: 13%;
+    font-size: clamp(22px, 3.4vw, 40px);
+    font-weight: 600; letter-spacing: .45em;
+    color: rgba(255,255,255,.13);
+    filter: blur(2px);
+  }
+  .type-layer.t-mid {
+    top: 26%;
+    font-size: clamp(56px, 9vw, 110px);
+    color: transparent;
+    -webkit-text-stroke: 1.5px rgba(255,255,255,.22);
+  }
+  .type-layer.t-near {
+    bottom: -.18em;
+    font-size: clamp(130px, 21vw, 250px);
+    letter-spacing: -.04em;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    opacity: .92;
+  }
+
+  /* ───────── animated counters ───────── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 40px; margin-top: 64px; text-align: center;
+  }
+  .stat .num {
+    font-size: clamp(44px, 6vw, 72px);
+    font-weight: 800; letter-spacing: -.03em;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .label { margin-top: 8px; color: var(--grey); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
+
+  /* ───────── horizontal text scroll-skew ───────── */
+  .skew-line {
+    font-size: clamp(40px, 7vw, 96px);
+    font-weight: 800; letter-spacing: -.04em;
+    white-space: nowrap; will-change: transform, filter;
+    padding: 10px 0;
+    margin-left: -4%;    /* staggered starts now that the lines sit still */
+  }
+  .skew-line.alt { margin-left: -14%; }
+  .skew-wrap { overflow: hidden; padding: 80px 0; }
+  .skew-line.alt { color: transparent; -webkit-text-stroke: 1.5px var(--ink); }
+
+  /* ───────── footer / CTA ───────── */
+  footer {
+    padding: 140px 48px 60px;
+    text-align: center;
+  }
+  footer h2 {
+    font-size: clamp(36px, 6vw, 76px);
+    font-weight: 800; letter-spacing: -.03em; margin-bottom: 36px;
+  }
+  footer .fineprint {
+    margin-top: 80px; color: var(--grey); font-size: 13px;
+  }
+
+  /* ───────── remix button ───────── */
+  .remix-btn {
+    /* above the wipe (9000) so the tumbling die stays visible during it */
+    position: fixed; bottom: 28px; right: 28px; z-index: 9200;
+    display: flex; align-items: center; gap: 12px;
+    padding: 19px 34px; border-radius: 100px;
+    border: none; cursor: none;
+    font: 700 17px "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    color: #fff;
+    box-shadow: 0 12px 36px rgba(14,14,16,.3);
+    transition: transform .45s var(--spring), box-shadow .45s var(--spring),
+                width .5s var(--spring), height .5s var(--spring),
+                border-radius .5s var(--spring), padding .5s var(--spring),
+                gap .5s var(--spring);
+    will-change: transform;
+  }
+  .remix-btn .label {
+    display: inline-block; max-width: 90px; overflow: hidden;
+    white-space: nowrap;
+    transition: opacity .35s ease;   /* fades in only after the pill has unfolded */
+  }
+  /* idle routine — one shared 6.5s cycle: wiggle and shine start together
+     (0–11% / 0–20%), the ping launches near the end of the shine (16–46%),
+     then the button rests for the remainder of the cycle */
+  .remix-btn .die { animation: die-wiggle 6.5s ease-in-out infinite; }
+  @keyframes die-wiggle {
+    0%, 11%, 100% { transform: rotate(0); }
+    3.5% { transform: rotate(-20deg) scale(1.12); }
+    7%   { transform: rotate(14deg); }
+    9.5% { transform: rotate(-5deg); }
+  }
+  .remix-btn::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(110deg, transparent 32%, rgba(255,255,255,.35) 50%, transparent 68%);
+    background-size: 250% 100%;
+    animation: btn-shine 6.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  /* shine sweeps alongside the wiggle */
+  @keyframes btn-shine {
+    0%        { background-position: 180% 0; }
+    20%, 100% { background-position: -80% 0; }
+  }
+  /* no idle theatrics while morphed into the die */
+  .remix-btn.morphing::after { animation: none; opacity: 0; }
+  .remix-btn.morphing .die { animation: none; }
+  /* morphed state: pill collapses to a square.
+     width/height are driven inline from JS — a class rule here would
+     lose to the inline size freeze that makes the morph animatable */
+  .remix-btn.morphing {
+    padding: 0; gap: 0;
+    justify-content: center;
+    border-radius: 17px;
+    /* match the cube-face design so the square→cube swap is seamless */
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: 1px solid rgba(255,255,255,.35);
+  }
+  .remix-btn.morphing .label {
+    max-width: 0; opacity: 0;
+    transition: max-width .3s var(--ease-out), opacity .2s ease;   /* collapse immediately on press */
+  }
+  /* square phase shows a single CSS pip — dice glyphs have lopsided
+     font metrics and never sit truly centered */
+  .remix-btn.morphing .die {
+    position: absolute; inset: 0;
+    font-size: 0;   /* hide the emoji */
+    background-image: radial-gradient(circle 6px at 50% 50%, #fff 0 88%, transparent 100%);
+  }
+  /* unfold phase: pill expands empty first, then text + dice fade back in */
+  .remix-btn.unfolding .label,
+  .remix-btn.unfolding .die { opacity: 0; transition: none; }
+
+  /* 3D die — six real faces, shown once the pill has collapsed */
+  .remix-btn .cube {
+    position: absolute; inset: 0;
+    display: none;
+    transform-style: preserve-3d;
+    pointer-events: none;
+  }
+  .remix-btn .cube .face {
+    position: absolute; inset: 0;
+    /* pips drawn as gradients — always dead-center, unlike dice glyphs */
+    background-image: var(--pips), linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.35);
+  }
+  .face.f1 { transform: rotateY(0deg)   translateZ(31px);
+    --pips: radial-gradient(circle 6px at 50% 50%, #fff 0 88%, transparent 100%); }
+  .face.f2 { transform: rotateY(90deg)  translateZ(31px);
+    --pips: radial-gradient(circle 6px at 66% 34%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 34% 66%, #fff 0 88%, transparent 100%); }
+  .face.f3 { transform: rotateY(180deg) translateZ(31px);
+    --pips: radial-gradient(circle 6px at 28% 28%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 50% 50%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 72% 72%, #fff 0 88%, transparent 100%); }
+  .face.f4 { transform: rotateY(-90deg) translateZ(31px);
+    --pips: radial-gradient(circle 6px at 32% 32%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 68% 32%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 32% 68%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 68% 68%, #fff 0 88%, transparent 100%); }
+  .face.f5 { transform: rotateX(90deg)  translateZ(31px);
+    --pips: radial-gradient(circle 6px at 32% 32%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 68% 32%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 50% 50%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 32% 68%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 68% 68%, #fff 0 88%, transparent 100%); }
+  .face.f6 { transform: rotateX(-90deg) translateZ(31px);
+    --pips: radial-gradient(circle 6px at 34% 27%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 34% 50%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 34% 73%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 66% 27%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 66% 50%, #fff 0 88%, transparent 100%),
+            radial-gradient(circle 6px at 66% 73%, #fff 0 88%, transparent 100%); }
+  /* spin phase: the flat square becomes a tumbling 3D cube */
+  .remix-btn.spin3d {
+    perspective: 340px;
+    background: transparent;
+    box-shadow: none;
+  }
+  .remix-btn.spin3d::before { animation: none; opacity: 0; }
+  .remix-btn.spin3d .die { display: none; }
+  .remix-btn.spin3d .cube {
+    display: block;
+    animation: cube-spin 1.2s linear infinite;
+  }
+  /* X, Y and Z all rotate at different rates; X and Y end on full turns
+     (360/720) so the loop is seamless, Z swings back and forth */
+  @keyframes cube-spin {
+    0%   { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); }
+    25%  { transform: rotateX(90deg)  rotateY(180deg) rotateZ(55deg); }
+    50%  { transform: rotateX(180deg) rotateY(360deg) rotateZ(0deg); }
+    75%  { transform: rotateX(270deg) rotateY(540deg) rotateZ(-55deg); }
+    100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(0deg); }
+  }
+  .remix-btn::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    box-shadow: 0 0 0 0 var(--accent);
+    animation: ping 6.5s cubic-bezier(.16, 1, .3, 1) infinite;
+    pointer-events: none;
+  }
+  /* ping launches as the shine is finishing */
+  @keyframes ping {
+    0%, 16%    { box-shadow: 0 0 0 0 var(--accent); opacity: .8; }
+    46%, 100%  { box-shadow: 0 0 0 24px transparent; opacity: 0; }
+  }
+  .remix-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 16px 44px rgba(14,14,16,.35);
+  }
+  .remix-btn:active { transform: scale(.92); }
+  .remix-btn .die {
+    display: inline-block; font-size: 20px; line-height: 1;
+    transition: font-size .4s var(--spring), opacity .35s ease;
+  }
+  @media (hover: none) { .remix-btn { cursor: pointer; } }
+
+  /* tooltip — shown after hovering the button for 2s */
+  .remix-tip {
+    position: fixed; right: 28px; bottom: 104px; z-index: 951;
+    max-width: 260px;
+    background: var(--ink); color: #fff;
+    padding: 14px 18px; border-radius: 14px;
+    font-size: 13.5px; line-height: 1.55;
+    box-shadow: 0 14px 40px rgba(14,14,16,.3);
+    opacity: 0; transform: translateY(12px) scale(.9);
+    transform-origin: 100% 100%;
+    transition: opacity .4s var(--ease-out), transform .5s var(--spring);
+    pointer-events: none;
+  }
+  .remix-tip::after {
+    content: ""; position: absolute; bottom: -5px; right: 40px;
+    width: 12px; height: 12px; background: var(--ink);
+    transform: rotate(45deg);
+  }
+  .remix-tip.show { opacity: 1; transform: none; }
+  .remix-tip strong {
+    background: linear-gradient(90deg, #ff6ec4, #ffc36e, #6eff8f, #6ec4ff, #b96eff, #ff6ec4);
+    background-size: 300% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: holo-shift 4s linear infinite;
+  }
+  /* holographic strip — previews the spectrum remix can roll */
+  .remix-tip .holo {
+    position: relative; display: block; overflow: hidden;
+    height: 10px; margin-top: 12px; border-radius: 6px;
+    background: linear-gradient(90deg, #ff6ec4, #ffc36e, #6eff8f, #6ec4ff, #b96eff, #ff6ec4);
+    background-size: 300% 100%;
+    animation: holo-shift 4s linear infinite;
+  }
+  .remix-tip .holo::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 40%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.75), transparent);
+    animation: holo-gloss 2.2s ease-in-out infinite;
+  }
+  @keyframes holo-shift {
+    0%   { background-position: 0% 50%;   filter: hue-rotate(0deg); }
+    100% { background-position: 300% 50%; filter: hue-rotate(360deg); }
+  }
+  @keyframes holo-gloss {
+    from { left: -45%; }
+    to   { left: 105%; }
+  }
+
+  /* full-page wipe that bursts from the button on remix */
+  .wipe {
+    position: fixed; inset: 0; z-index: 9000;
+    pointer-events: none; opacity: 0;
+  }
+
+  /* big hover-distort link */
+  .mega-link {
+    display: inline-block;
+    font-size: inherit; font-weight: inherit;
+    color: var(--ink); text-decoration: none;
+    transition: letter-spacing .5s var(--spring), color .3s ease;
+  }
+  .mega-link:hover { letter-spacing: .04em; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="cursor-ring"></div>
+<div class="cursor-dot"></div>
+<div class="progress" id="progress"></div>
+
+<nav>
+  <div class="logo">motion.studio</div>
+  <div class="links">
+    <a href="#work" data-hover>Work</a>
+    <a href="#about" data-hover>About</a>
+    <a href="#stats" data-hover>Stats</a>
+    <a href="#contact" data-hover>Contact</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <h1>
+    <span class="line"><span class="word">Design&nbsp;in</span></span>
+    <span class="line"><span class="word accent">motion.</span></span>
+  </h1>
+  <p>A single-page playground of spring physics, scroll choreography, parallax depth and micro-interactions — all hand-rolled, no frameworks.</p>
+  <div class="cta-row">
+    <a class="btn primary magnetic" href="#work" data-hover>Explore the motion</a>
+    <a class="btn ghost magnetic" href="#contact" data-hover>Get in touch</a>
+  </div>
+  <div class="scroll-hint">scroll
+    <span class="chevrons" aria-hidden="true"><span></span><span></span></span>
+  </div>
+</header>
+
+<!-- MARQUEE -->
+<div class="marquee" aria-hidden="true">
+  <div class="track" id="marqueeTrack">
+    <span>Springs</span><span>Parallax</span><span>Stagger</span><span>Magnetic</span>
+    <span>Reveal</span><span>Tilt</span><span>Counters</span><span>Velocity</span>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="block" id="work">
+  <div class="eyebrow reveal">What's inside</div>
+  <h2 class="title reveal">Every element on this page moves with intent.</h2>
+  <div class="grid stagger">
+    <div class="card tilt" data-hover>
+      <div class="icon" data-fx="spring"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 11a2 2 0 1 1-4 0 4 4 0 0 1 8 0 6 6 0 0 1-12 0 8 8 0 0 1 16 0 10 10 0 1 1-20 0 11.93 11.93 0 0 1 2.42-7.22 2 2 0 1 1 3.16 2.44"/></svg></div>
+      <h3>Spring physics</h3>
+      <p>Buttons and cards respond with overshoot easing — the bouncy, weighted feel Framer Motion made famous, recreated with cubic-bezier springs.</p>
+    </div>
+    <div class="card tilt" data-hover>
+      <div class="icon" data-fx="magnet"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15"/><path d="m5 8 4 4"/><path d="m12 15 4 4"/></svg></div>
+      <h3>Magnetic pull</h3>
+      <p>Hover near the hero buttons and they lean toward your cursor, then snap back with a spring when you leave. Pure pointer math.</p>
+    </div>
+    <div class="card tilt" data-hover>
+      <div class="icon" data-fx="flip"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></div>
+      <h3>3D tilt cards</h3>
+      <p>These cards track your cursor in 3D space with perspective rotation and a glow that follows the pointer — move your mouse across one.</p>
+    </div>
+    <div class="card tilt" data-hover>
+      <div class="icon" data-fx="cascade"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></div>
+      <h3>Scroll choreography</h3>
+      <p>Sections fade, slide, zoom and flip into view as you scroll, with staggered children — driven by IntersectionObserver, zero scroll-jank.</p>
+    </div>
+    <div class="card tilt" data-hover>
+      <div class="icon" data-fx="depth"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg></div>
+      <h3>Parallax depth</h3>
+      <p>The dark band below moves its shapes at different speeds as you scroll, creating layered depth like a Framer scroll-transform section.</p>
+    </div>
+    <div class="card tilt" data-hover>
+      <div class="icon" data-fx="skew"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></div>
+      <h3>Velocity skew</h3>
+      <p>The giant headlines near the bottom skew and slide proportionally to your scroll speed — scroll fast and watch them shear.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PARALLAX BAND -->
+<section class="parallax-band" id="about">
+  <div class="type-layer t-far"  data-speed="0.06" aria-hidden="true">depth&ensp;depth&ensp;depth&ensp;depth&ensp;depth&ensp;depth&ensp;depth&ensp;depth&ensp;depth&ensp;depth</div>
+  <div class="type-layer t-mid"  data-speed="0.22" aria-hidden="true">DEPTH&ensp;DEPTH&ensp;DEPTH&ensp;DEPTH&ensp;DEPTH&ensp;DEPTH</div>
+  <div class="type-layer t-near" data-speed="0.55" aria-hidden="true">DEPTH&ensp;DEPTH&ensp;DEPTH&ensp;DEPTH</div>
+  <h2 class="reveal zoom">Depth is just speed.</h2>
+  <p class="reveal">One word, three distances. As you scroll, the huge sharp row races past, the outlined row glides, and the blurred row barely crawls — same scroll, three speeds, instant depth. Your cursor nudges them too.</p>
+</section>
+
+<!-- STATS -->
+<section class="block" id="stats">
+  <div class="eyebrow reveal">By the numbers</div>
+  <h2 class="title reveal from-left">Animated counters that spring to their target.</h2>
+  <div class="stats reveal">
+    <div class="stat"><div class="num" data-count="60" data-suffix="fps">0</div><div class="label">Butter smooth</div></div>
+    <div class="stat"><div class="num" data-count="14" data-suffix="">0</div><div class="label">Animation types</div></div>
+    <div class="stat"><div class="num" data-count="0" data-suffix=" deps">0</div><div class="label">Frameworks used</div></div>
+    <div class="stat"><div class="num" data-count="100" data-suffix="%">0</div><div class="label">Hand-rolled</div></div>
+  </div>
+</section>
+
+<!-- VELOCITY SKEW LINES -->
+<div class="skew-wrap">
+  <div class="skew-line" data-dir="1">MOTION&nbsp;CREATES&nbsp;EMOTION&nbsp;—&nbsp;MOTION&nbsp;CREATES&nbsp;EMOTION&nbsp;—</div>
+  <div class="skew-line alt" data-dir="-1">SCROLL&nbsp;FASTER&nbsp;TO&nbsp;SHEAR&nbsp;ME&nbsp;—&nbsp;SCROLL&nbsp;FASTER&nbsp;TO&nbsp;SHEAR&nbsp;ME&nbsp;—</div>
+</div>
+
+<!-- MORE REVEAL VARIANTS -->
+<section class="block">
+  <div class="eyebrow reveal">Reveal variants</div>
+  <h2 class="title reveal flip">This headline flips up from the baseline.</h2>
+  <div class="grid" style="margin-top:48px">
+    <div class="card reveal from-left" data-hover>
+      <div class="icon"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></div>
+      <h3>From the left</h3>
+      <p>Slides in 72px from the left edge with a long decelerating ease.</p>
+    </div>
+    <div class="card reveal zoom" data-hover>
+      <div class="icon"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6"/><path d="M8 11h6"/></svg></div>
+      <h3>Zoom in</h3>
+      <p>Scales from 82% with a fade — the classic Framer "appear" preset.</p>
+    </div>
+    <div class="card reveal from-right" data-hover>
+      <div class="icon"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+      <h3>From the right</h3>
+      <p>Mirror of the left variant. Re-trigger any of these by scrolling away and back.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER CTA -->
+<footer id="contact">
+  <div class="eyebrow reveal">The end — almost</div>
+  <h2 class="reveal zoom"><a class="mega-link magnetic" href="#" data-hover>Let's build something →</a></h2>
+  <a class="btn primary magnetic reveal" href="#" data-hover>Start a project</a>
+  <div class="fineprint">Single-file demo · CSS springs + IntersectionObserver + rAF · no dependencies</div>
+</footer>
+
+<div class="wipe" id="wipe"></div>
+
+<div class="remix-tip" id="remixTip" role="tooltip">
+  <strong>Remix everything.</strong> One click re-rolls the whole page — colors, spring curves, tilt &amp; magnet physics, reveal styles — and replays every animation.
+  <span class="holo" aria-hidden="true"></span>
+</div>
+
+<button class="remix-btn magnetic" id="remixBtn" data-hover>
+  <span class="die">🎲</span><span class="label">Remix</span>
+  <span class="cube" aria-hidden="true">
+    <span class="face f1"></span>
+    <span class="face f2"></span>
+    <span class="face f3"></span>
+    <span class="face f4"></span>
+    <span class="face f5"></span>
+    <span class="face f6"></span>
+  </span>
+</button>
+
+<script>
+(() => {
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const rand = a => a[Math.floor(Math.random() * a.length)];
+  const rr = (min, max) => min + Math.random() * (max - min);
+
+  /* live physics config — remix re-rolls these */
+  const cfg = { tilt: 14, magnet: 0.32, skewMax: 12, skewVel: 0.55 };
+
+  /* ── custom cursor with trailing ring ── */
+  const dot = document.querySelector('.cursor-dot');
+  const ring = document.querySelector('.cursor-ring');
+  let mx = innerWidth / 2, my = innerHeight / 2, rx = mx, ry = my;
+  addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; });
+  document.querySelectorAll('[data-hover]').forEach(el => {
+    el.addEventListener('pointerenter', () => document.body.classList.add('cursor-grow'));
+    el.addEventListener('pointerleave', () => document.body.classList.remove('cursor-grow'));
+  });
+
+  /* ── magnetic buttons ──
+     Pull is clamped, and magnetic siblings (the hero CTA pair) drift
+     together: pulling one carries its neighbour in the same direction,
+     so the pair moves as a unit and buttons can never overlap. */
+  const MAX_PULL_X = 22, MAX_PULL_Y = 14;
+  const magnets = [...document.querySelectorAll('.magnetic')].map(el => ({ el, x: 0, y: 0, tx: 0, ty: 0 }));
+  magnets.forEach(m => {
+    m.peers = magnets.filter(o => o !== m && o.el.parentElement === m.el.parentElement);
+    m.el.addEventListener('pointermove', e => {
+      if (m.el.classList.contains('morphing')) return;   // no magnetism while the die spins
+      const r = m.el.getBoundingClientRect();
+      m.tx = Math.max(-MAX_PULL_X, Math.min(MAX_PULL_X, (e.clientX - (r.left + r.width / 2)) * cfg.magnet));
+      m.ty = Math.max(-MAX_PULL_Y, Math.min(MAX_PULL_Y, (e.clientY - (r.top + r.height / 2)) * cfg.magnet));
+    });
+    m.el.addEventListener('pointerleave', () => { m.tx = 0; m.ty = 0; });
+  });
+
+  /* ── 3D tilt cards + pointer glow ──
+     While tracking, use a near-instant transition so the tilt sticks to the
+     cursor; restore the long CSS spring only for the snap-back on leave. */
+  document.querySelectorAll('.tilt').forEach(card => {
+    card.addEventListener('pointerenter', () => {
+      card.style.transition = 'transform .12s ease-out, box-shadow .5s var(--spring)';
+    });
+    card.addEventListener('pointermove', e => {
+      if (card.className.includes('fx-')) return;   // tilt pauses while a press effect plays
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width;
+      const py = (e.clientY - r.top) / r.height;
+      card.style.transform =
+        `perspective(900px) rotateY(${(px - .5) * cfg.tilt}deg) rotateX(${(py - .5) * -cfg.tilt}deg) translateZ(6px)`;
+      card.style.setProperty('--mx', (px * 100) + '%');
+      card.style.setProperty('--my', (py * 100) + '%');
+    });
+    card.addEventListener('pointerleave', () => {
+      card.style.transition = '';   // back to the stylesheet spring
+      card.style.transform = '';
+      card.classList.remove('fx-cooldown');   // re-arm hover tilt for next entry
+    });
+  });
+
+  /* ── icon press effects: whole-card performances per concept ──
+     The fx class goes on the card; descendant rules choreograph the
+     icon, heading and body. Animations win over the tilt's inline
+     transform while playing, then hand back cleanly. */
+  const accentNow = () =>
+    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+
+  function pressRipple(x, y) {
+    const ring = document.createElement('div');
+    ring.style.cssText = `position:fixed;left:${x}px;top:${y}px;` +
+      `width:12px;height:12px;border-radius:50%;border:2px solid ${accentNow()};` +
+      `transform:translate(-50%,-50%);z-index:1200;pointer-events:none;`;
+    document.body.appendChild(ring);
+    ring.animate(
+      [{ transform: 'translate(-50%,-50%) scale(1)', opacity: .9 },
+       { transform: 'translate(-50%,-50%) scale(9)', opacity: 0 }],
+      { duration: 650, easing: 'cubic-bezier(.16,1,.3,1)' })
+      .onfinish = () => ring.remove();
+  }
+
+  /* skew card: manga speed lines streaking opposite to the dash (clipped
+     by the card's own rounded edges) */
+  function speedLines(card) {
+    for (let i = 0; i < 7; i++) {
+      const ln = document.createElement('div');
+      ln.style.cssText = `position:absolute;top:${rr(8, 92)}%;right:-80px;width:${rr(28, 70)}px;height:2px;` +
+        `border-radius:1px;background:linear-gradient(90deg, transparent, ${accentNow()});` +
+        `opacity:0;pointer-events:none;`;
+      card.appendChild(ln);
+      ln.animate(
+        [{ transform: 'translateX(0)', opacity: 0 },
+         { opacity: .8, offset: .2 },
+         { transform: `translateX(-${card.offsetWidth + 160}px)`, opacity: 0 }],
+        { duration: rr(260, 480), delay: rr(60, 320), easing: 'cubic-bezier(.2,.6,.3,1)', fill: 'backwards' })
+        .onfinish = () => ln.remove();
+    }
+  }
+
+  /* skew card: ghost afterimages of the bolt trailing the dash */
+  function boltGhosts(icon) {
+    const r = icon.getBoundingClientRect();
+    [1, 2].forEach(k => {
+      const g = icon.cloneNode(true);
+      g.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;` +
+        `margin:0;display:grid;place-items:center;color:${accentNow()};opacity:${.5 / k};` +
+        `pointer-events:none;z-index:1100;filter:blur(${k}px);`;
+      document.body.appendChild(g);
+      g.animate(
+        [{ transform: 'translateX(0) skewX(0)' },
+         { transform: 'translateX(-16px) skewX(9deg)', offset: .18 },
+         { transform: 'translateX(52px) skewX(-17deg)', offset: .42 },
+         { transform: 'translateX(-9px) skewX(5deg)', opacity: .5 / k, offset: .7 },
+         { transform: 'translateX(0)', opacity: 0 }],
+        { duration: 900, delay: 55 * k, easing: 'cubic-bezier(.4,.1,.3,1)' })
+        .onfinish = () => g.remove();
+    });
+  }
+
+  /* magnet card: split the title into letter spans so the field can grab them */
+  const magnetCard = document.querySelector('.icon[data-fx="magnet"]')?.closest('.card');
+  if (magnetCard) {
+    const h3 = magnetCard.querySelector('h3');
+    h3.innerHTML = h3.textContent.split(' ').map(w =>
+      `<span class="mag-w">${[...w].map(c => `<span class="mag-l">${c}</span>`).join('')}</span>`
+    ).join(' ');
+  }
+
+  /* live follow mode: the title's letters detach, encircle the cursor's
+     outer ring and orbit it, chasing the cursor around the card. They fly
+     home when the pointer leaves the card (or the icon is pressed again).
+     Driven per-frame in the rAF loop via magState. */
+  let magState = null;   // { letters: [{el, x, y, deg}], returning, rot }
+
+  function toggleMagnetFollow() {
+    if (magState) { magState.returning = true; return; }
+    magState = {
+      letters: [...magnetCard.querySelectorAll('.mag-l')].map(el => ({ el, x: 0, y: 0, deg: 0 })),
+      returning: false,
+      rot: 0,
+    };
+  }
+  if (magnetCard) {
+    magnetCard.addEventListener('pointerleave', () => { if (magState) magState.returning = true; });
+  }
+
+  /* The fx class lifts on the animationend of the LAST running fx animation
+     — zero timer drift, zero fill-hold. The icon's own transition then
+     carries it into the tilted hover pose if the cursor is still on the
+     card, or it simply stays at rest. Tilt is paused during the effect and
+     resumes on the next pointer move, so no stale transform can pop back. */
+  document.querySelectorAll('.icon[data-fx]').forEach(icon => {
+    const card = icon.closest('.card');
+    card.addEventListener('click', e => {   // anywhere on the card triggers its effect
+      pressRipple(e.clientX, e.clientY);
+      if (icon.dataset.fx === 'magnet') { toggleMagnetFollow(); return; }
+      const cls = 'fx-' + icon.dataset.fx;
+      card.classList.remove(cls);
+      void card.offsetWidth;       // reflow so a re-press restarts the keyframes
+      card.style.transform = '';   // drop any stale tilt for the duration
+      card.classList.add(cls);
+      if (icon.dataset.fx === 'skew') { speedLines(card); boltGhosts(icon); }
+    });
+    card.addEventListener('animationend', () => {
+      const fxClasses = [...card.classList].filter(c => c.startsWith('fx-'));
+      if (!fxClasses.length) return;
+      const stillRunning = card.getAnimations({ subtree: true })
+        .some(a => a.playState === 'running' && (a.animationName || '').startsWith('fx-'));
+      if (!stillRunning) {
+        card.classList.remove(...fxClasses);
+        card.classList.add('fx-cooldown');   // hold the resting pose until re-entry
+      }
+    });
+  });
+
+  /* ── scroll reveals (re-triggerable, with hysteresis) ──
+     The bottom rootMargin shrinks the trigger zone: an element must rise
+     ~110px above the bottom edge before revealing, so the animation plays
+     on screen instead of at (or below) the fold. Fixed px, not % — the
+     footer button sits ~158px from the document's end and a %-based zone
+     outgrows that on tall screens, leaving it permanently hidden.
+     Reveal at ≥20% visible; only un-reveal once fully outside the zone —
+     the reveal transforms (zoom/flip) resize the observed box, so a
+     symmetric threshold would make edge cards toggle in a loop. */
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (en.intersectionRatio >= 0.2) en.target.classList.add('in');
+      else if (!en.isIntersecting) en.target.classList.remove('in');
+    });
+  }, { threshold: [0, 0.2], rootMargin: '0px 0px -110px 0px' });
+  document.querySelectorAll('.reveal, .stagger').forEach(el => io.observe(el));
+
+  /* ── animated counters (spring-ish ease-out) ── */
+  const counterIO = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      const el = en.target;
+      counterIO.unobserve(el);
+      const target = +el.dataset.count, suffix = el.dataset.suffix || '';
+      const t0 = performance.now(), dur = 1600;
+      (function tick(now) {
+        const p = Math.min((now - t0) / dur, 1);
+        const eased = 1 - Math.pow(1 - p, 4);
+        el.textContent = Math.round(target * eased) + suffix;
+        if (p < 1) requestAnimationFrame(tick);
+      })(t0);
+    });
+  }, { threshold: 0.6 });
+  const counterEls = [...document.querySelectorAll('.num[data-count]')];
+  counterEls.forEach(el => counterIO.observe(el));
+
+  /* ── rAF loop: cursor trail, magnetic spring, progress, parallax, velocity skew ── */
+  const progress = document.getElementById('progress');
+  const navEl = document.querySelector('nav');
+  const hint = document.querySelector('.scroll-hint');
+  const layers = [...document.querySelectorAll('.type-layer')];
+  const band = document.querySelector('.parallax-band');
+  const skews = [...document.querySelectorAll('.skew-line')];
+  let lastY = scrollY, vel = 0, skewX = 0, slideX = 0, velBlur = 0, velAb = 0, hintStill = 0;
+
+  let lastFrameT = performance.now();
+  function frame(now) {
+    // frames elapsed since last tick — keeps slow motion time-accurate even
+    // when frame times vary (clamped so tab switches don't cause jumps)
+    const dtf = Math.min(2.5, (now - lastFrameT) / 16.7) || 1;
+    lastFrameT = now;
+
+    // cursor
+    rx = lerp(rx, mx, 0.18); ry = lerp(ry, my, 0.18);
+    dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`;
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+
+    // magnetic spring toward target, plus sibling drift (85% of a peer's
+    // pull) so adjacent buttons keep their spacing instead of colliding
+    magnets.forEach(m => {
+      m.x = lerp(m.x, m.tx, 0.16); m.y = lerp(m.y, m.ty, 0.16);
+      const dx = m.x + m.peers.reduce((s, p) => s + p.x, 0) * 0.85;
+      const dy = m.y + m.peers.reduce((s, p) => s + p.y, 0) * 0.85;
+      if (Math.abs(dx) > .05 || Math.abs(dy) > .05)
+        m.el.style.translate = `${dx}px ${dy}px`;
+      else m.el.style.translate = '';
+    });
+
+    // magnet card: title letters orbit the cursor ring and chase it
+    if (magState) {
+      const N = magState.letters.length, R = 46;
+      magState.rot += .022;                       // slow orbit while following
+      let settled = true;
+      magState.letters.forEach((L, i) => {
+        const b = L.el.getBoundingClientRect();
+        // current layout origin = on-screen centre minus our own offset
+        // (self-corrects for card tilt and scroll)
+        const ox = b.left + b.width / 2 - L.x, oy = b.top + b.height / 2 - L.y;
+        let tx = 0, ty = 0, tdeg = 0;
+        if (!magState.returning) {
+          const th = (i / N) * Math.PI * 2 - Math.PI / 2 + magState.rot;
+          tx = rx + R * Math.cos(th) - ox;
+          ty = ry + R * Math.sin(th) - oy;
+          tdeg = th * 180 / Math.PI + 90;          // tangent to the ring
+        }
+        const f = Math.max(.08, .17 - i * .005);   // trailing letters lag — train feel
+        L.x = lerp(L.x, tx, f); L.y = lerp(L.y, ty, f); L.deg = lerp(L.deg, tdeg, f);
+        if (Math.abs(L.x - tx) > .4 || Math.abs(L.y - ty) > .4 || Math.abs(L.x) > .4 || Math.abs(L.y) > .4) settled = false;
+        L.el.style.transform = `translate(${L.x}px, ${L.y}px) rotate(${L.deg}deg)`;
+      });
+      if (magState.returning && settled) {
+        magState.letters.forEach(L => { L.el.style.transform = ''; });
+        magState = null;
+      }
+    }
+
+    // scroll progress
+    const max = document.documentElement.scrollHeight - innerHeight;
+    progress.style.transform = `scaleX(${max ? scrollY / max : 0})`;
+
+    // frosted nav once past the hero's top
+    navEl.classList.toggle('scrolled', scrollY > 60);
+
+    // scroll hint: hidden while the page is moving, back ~600ms after it stops
+    if (scrollY !== lastY) { hintStill = performance.now(); hint.classList.add('hide'); }
+    else if (performance.now() - hintStill > 600) hint.classList.remove('hide');
+
+    // endless marquee belt — cruise, drag momentum, seamless modulo wrap.
+    // Time-based advance + translate3d (GPU layer with subpixel sampling)
+    // keep low speeds glassy instead of snapping to whole pixels.
+    if (!marqDrag) {
+      marqVel = lerp(marqVel, marqSpeed, .05);
+      marqX += marqVel * dtf;
+    }
+    const period = track.scrollWidth / 4;   // width of one content copy
+    if (period) marqX = ((marqX % period) + period) % period - period;
+    track.style.transform = `translate3d(${marqX}px, 0, 0)`;
+
+    // typographic parallax — scroll pans the rows horizontally, each at its
+    // own speed; the cursor nudges them with the same multipliers
+    const br = band.getBoundingClientRect();
+    if (br.bottom > 0 && br.top < innerHeight) {
+      const center = br.top + br.height / 2 - innerHeight / 2;
+      const pxn = rx / innerWidth - .5;   // lerped cursor → smooth drift
+      layers.forEach(l => {
+        const sp = +l.dataset.speed;
+        l.style.transform =
+          `translateX(calc(-50% + ${(center * -sp + pxn * sp * 220).toFixed(1)}px))`;
+      });
+    }
+
+    // velocity lines — speed-only physics (no scroll-position drift, so the
+    // section reads differently from the DEPTH band's positional parallax):
+    // shear, elastic slide, motion blur and channel-split all scale with
+    // scroll velocity and spring back to a crisp standstill when it stops
+    vel = lerp(vel, scrollY - lastY, 0.12);
+    lastY = scrollY;
+    skewX = lerp(skewX, Math.max(-cfg.skewMax, Math.min(cfg.skewMax, vel * cfg.skewVel)), 0.2);
+    slideX = lerp(slideX, Math.max(-90, Math.min(90, vel * 2.2)), 0.12);
+    const speed = Math.abs(vel);
+    velBlur = lerp(velBlur, Math.min(7, speed * .09), .18);
+    velAb = lerp(velAb, Math.min(6, speed * .07), .18);
+    skews.forEach(s => {
+      const dir = +s.dataset.dir;
+      s.style.transform = `translateX(${(slideX * dir).toFixed(1)}px) skewX(${(skewX * dir).toFixed(2)}deg)`;
+      s.style.filter = velBlur > .15 ? `blur(${velBlur.toFixed(1)}px)` : '';
+      s.style.textShadow = velAb > .25
+        ? `${(-velAb * dir).toFixed(1)}px 0 rgba(244,63,94,.45), ${(velAb * dir).toFixed(1)}px 0 rgba(14,165,233,.45)`
+        : '';
+    });
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* marquee: content duplicated 4×, position wrapped modulo one copy-width —
+     a true endless belt. Auto-scrolls, draggable with momentum, wheel-scrubbable. */
+  const track = document.getElementById('marqueeTrack');
+  track.innerHTML += track.innerHTML;   // 2×
+  track.innerHTML += track.innerHTML;   // 4×
+  const marquee = track.parentElement;
+  let marqX = 0, marqSpeed = -1.1, marqVel = -1.1, marqDrag = null;
+
+  marquee.addEventListener('pointerdown', e => {
+    marqDrag = { startX: e.clientX, base: marqX, lastX: e.clientX, lastT: performance.now() };
+    marquee.setPointerCapture(e.pointerId);
+  });
+  marquee.addEventListener('pointermove', e => {
+    if (!marqDrag) return;
+    marqX = marqDrag.base + (e.clientX - marqDrag.startX);
+    const now = performance.now(), dt = (now - marqDrag.lastT) || 1;
+    marqVel = (e.clientX - marqDrag.lastX) / dt * 16.7;   // px per frame, for fling momentum
+    marqDrag.lastX = e.clientX; marqDrag.lastT = now;
+  });
+  ['pointerup', 'pointercancel'].forEach(ev =>
+    marquee.addEventListener(ev, () => { marqDrag = null; }));
+  marquee.addEventListener('wheel', e => {
+    e.preventDefault();
+    marqX -= (e.deltaY + e.deltaX) * .6;
+  }, { passive: false });
+
+  /* ── REMIX: re-roll every animation parameter and replay ── */
+  const palettes = [
+    ['#047857', '#22c55e', '#84cc16'],   // stock-market green (default)
+    ['#4f46e5', '#ec4899', '#f59e0b'],   // indigo / pink / amber
+    ['#059669', '#0891b2', '#84cc16'],   // emerald / cyan / lime
+    ['#dc2626', '#ea580c', '#facc15'],   // red / orange / gold
+    ['#7c3aed', '#d946ef', '#0ea5e9'],   // violet / fuchsia / sky
+    ['#0f766e', '#e11d48', '#f59e0b'],   // teal / rose / amber
+    ['#2563eb', '#14b8a6', '#f43f5e'],   // blue / teal / rose
+    ['#9333ea', '#f97316', '#22d3ee'],   // purple / orange / cyan
+    ['#16a34a', '#a21caf', '#fb923c'],   // green / magenta / tangerine
+    ['#0e7490', '#65a30d', '#ca8a04'],   // deep cyan / olive / mustard
+    ['#be123c', '#7c3aed', '#0d9488'],   // crimson / violet / teal
+    ['#1d4ed8', '#db2777', '#65a30d'],   // royal blue / raspberry / olive
+    ['#b45309', '#166534', '#9f1239'],   // bronze / forest / wine
+    ['#6d28d9', '#0891b2', '#e11d48'],   // grape / cyan / rose
+    ['#0f172a', '#475569', '#0ea5e9'],   // slate ink / steel / sky
+    ['#c2410c', '#0f766e', '#a16207'],   // terracotta / teal / ochre
+    ['#86198f', '#1e40af', '#15803d'],   // plum / navy / green
+    ['#e11d48', '#fb923c', '#fbbf24'],   // sunset: rose / tangerine / gold
+    ['#155e75', '#9d174d', '#4d7c0f'],   // petrol / berry / moss
+    ['#5b21b6', '#be185d', '#b45309'],   // royal purple / magenta / bronze
+    ['#047857', '#1d4ed8', '#b91c1c'],   // pine / cobalt / brick
+  ];
+  const papers = [
+    '#f7f6f3', '#f1f4ff', '#fdf6ee', '#f0faf4', '#fdf2f6', '#f4f4f5',
+    '#fbf7ef', '#eef6f6', '#f6f0fa', '#f7f2ee', '#eff3f8', '#f3f7ec',
+  ];
+  const variants = ['', 'from-left', 'from-right', 'zoom', 'flip'];
+  const blobs = [...document.querySelectorAll('.blob')];
+  const words = [...document.querySelectorAll('.hero .word')];
+
+  function remix(pal = rand(palettes)) {
+    const root = document.documentElement.style;
+
+    // new palette + surface + corner radius
+    root.setProperty('--accent', pal[0]);
+    root.setProperty('--accent-2', pal[1]);
+    root.setProperty('--accent-3', pal[2]);
+    root.setProperty('--paper', rand(papers));
+    root.setProperty('--radius', Math.round(rr(8, 30)) + 'px');
+
+    // new spring + ease curves (bouncier or snappier each roll)
+    const spring = `cubic-bezier(.22, ${rr(1.1, 1.9).toFixed(2)}, .36, 1)`;
+    root.setProperty('--spring', spring);
+    root.setProperty('--ease-out', `cubic-bezier(.16, 1, .${Math.round(rr(2, 5))}, 1)`);
+
+    // new physics
+    cfg.tilt = rr(6, 26);
+    cfg.magnet = rr(0.15, 0.55);
+    cfg.skewMax = rr(4, 20);
+    cfg.skewVel = rr(0.3, 1.0);
+
+    // reshuffle blobs
+    blobs.forEach((b, i) => {
+      b.style.background = pal[i % 3];
+      b.style.width = b.style.height = Math.round(rr(200, 480)) + 'px';
+      b.style.animationDuration = rr(8, 20).toFixed(1) + 's';
+    });
+
+    // marquee speed + direction
+    marqSpeed = (Math.random() < .5 ? -1 : 1) * rr(.6, 2.2);
+
+    // reassign every reveal a random variant and replay it
+    document.querySelectorAll('.reveal').forEach(el => {
+      el.classList.remove('in', 'from-left', 'from-right', 'zoom', 'flip');
+      const v = rand(variants);
+      if (v) el.classList.add(v);
+      io.unobserve(el); io.observe(el);   // re-observe → fires fresh entry → replays
+    });
+
+    // re-stagger children with random delays and replay
+    document.querySelectorAll('.stagger').forEach(el => {
+      el.classList.remove('in');
+      [...el.children].forEach(c => c.style.transitionDelay = rr(0, .7).toFixed(2) + 's');
+      io.unobserve(el); io.observe(el);
+    });
+
+    // replay hero headline with fresh timing
+    words.forEach((w, i) => {
+      w.style.animation = 'none';
+      void w.offsetWidth;   // reflow so the keyframes restart
+      w.style.animation = `word-in ${rr(.6, 1.4).toFixed(2)}s ${spring} ${(i * rr(.06, .22)).toFixed(2)}s forwards`;
+    });
+
+    // re-run counters
+    counterEls.forEach(el => {
+      el.textContent = '0' + (el.dataset.suffix || '');
+      counterIO.observe(el);
+    });
+  }
+
+  /* ── remix trigger: confetti + full-page radial wipe in the NEW palette ── */
+  const remixBtn = document.getElementById('remixBtn');
+  const wipe = document.getElementById('wipe');
+  const tip = document.getElementById('remixTip');
+
+  function confetti(cx, cy, pal) {
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div');
+      const s = rr(6, 13);
+      p.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;width:${s}px;height:${s}px;` +
+        `z-index:9100;pointer-events:none;background:${rand(pal)};` +
+        `border-radius:${Math.random() < .5 ? '50%' : '3px'}`;
+      document.body.appendChild(p);
+      const a = rr(0, Math.PI * 2), d = rr(70, 190);
+      p.animate([
+        { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d - 40}px) ) rotate(${rr(-260, 260)}deg) scale(.4)`, opacity: 0 }
+      ], { duration: rr(650, 1100), easing: 'cubic-bezier(.16,1,.3,1)' })
+       .onfinish = () => p.remove();
+    }
+  }
+
+  const remixMagnet = magnets.find(m => m.el === remixBtn);
+  let spinTimer, restoreTimer, pillW, pillH;
+
+  function morphToDie() {
+    clearTimeout(restoreTimer); clearTimeout(spinTimer);
+    remixBtn.classList.remove('unfolding');   // in case a previous unfold is mid-flight
+    remixMagnet.tx = remixMagnet.ty = 0;   // release the magnet so the die springs back to its anchor
+    // freeze current size so width/height can transition (auto isn't animatable),
+    // then drive the shrink inline — inline styles would override a class width
+    pillW = remixBtn.offsetWidth; pillH = remixBtn.offsetHeight;
+    remixBtn.style.width = pillW + 'px';
+    remixBtn.style.height = pillH + 'px';
+    void remixBtn.offsetWidth;
+    remixBtn.classList.add('morphing');
+    remixBtn.style.width = remixBtn.style.height = '62px';
+    // once the pill has collapsed into a square, swap it for the 3D cube
+    spinTimer = setTimeout(() => remixBtn.classList.add('spin3d'), 480);
+  }
+
+  function morphBack() {
+    clearTimeout(spinTimer);
+    remixBtn.classList.add('unfolding');     // pill expands fully empty…
+    remixBtn.classList.remove('spin3d');
+    remixBtn.classList.remove('morphing');
+    remixBtn.style.width = pillW + 'px';     // spring back to the pill size
+    remixBtn.style.height = pillH + 'px';
+    restoreTimer = setTimeout(() => {
+      remixBtn.classList.remove('unfolding'); // …then text + dice fade in
+      remixBtn.style.width = remixBtn.style.height = '';
+    }, 520);
+  }
+
+  let wiping = false;
+  remixBtn.addEventListener('click', () => {
+    if (wiping) return;
+    wiping = true;
+    clearTimeout(tipTimer); tip.classList.remove('show');
+    morphToDie();
+
+    const pal = rand(palettes);
+    const r = remixBtn.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+
+    confetti(cx, cy, pal);
+
+    // wipe bursts from the button, previewing the incoming palette,
+    // covers the page while it's restyled, then fades to reveal it
+    wipe.getAnimations().forEach(a => a.cancel());   // drop stale fill:forwards animations
+    wipe.style.background = `linear-gradient(120deg, ${pal[0]}, ${pal[1]}, ${pal[2]})`;
+    const expand = wipe.animate(
+      [{ clipPath: `circle(0% at ${cx}px ${cy}px)`, opacity: 1 },
+       { clipPath: `circle(150% at ${cx}px ${cy}px)`, opacity: 1 }],
+      { duration: 650, easing: 'cubic-bezier(.3, 0, .2, 1)', fill: 'forwards' });
+
+    setTimeout(() => remix(pal), 360);   // swap everything while covered
+
+    expand.onfinish = () => {
+      wipe.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: 450, easing: 'ease', fill: 'forwards' })
+        .onfinish = () => { morphBack(); wiping = false; };
+    };
+  });
+
+  /* ── tooltip after 1s of hover ── */
+  let tipTimer;
+  remixBtn.addEventListener('pointerenter', () => {
+    if (wiping) return;   // no tooltip over the die mid-remix
+    tipTimer = setTimeout(() => tip.classList.add('show'), 1000);
+  });
+  remixBtn.addEventListener('pointerleave', () => {
+    clearTimeout(tipTimer);
+    tip.classList.remove('show');
+  });
+})();
+</script>
+</body>
+</html>
