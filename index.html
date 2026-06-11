@@ -362,15 +362,21 @@
     transform: scale(1.06);
     background: color-mix(in srgb, var(--paper) 24%, transparent);
   }
-  /* WebKit only: it applies url() on backdrop-filter so softly that the gentle
-     filter looks almost clear, so swap the glass surfaces up to the original
-     strong refraction (blur 3px to match the pre-tame look). The `.webkit`
-     class is set in JS by a UA test — a CSS @supports query can't reliably
-     isolate Safari (the -webkit-named-image hack fails in current Safari),
-     and Blink-vs-WebKit isn't otherwise detectable in CSS. */
+  /* WebKit only: it renders url() on backdrop-filter so softly that even the
+     strong refraction left almost no frosted material — the pills read as bare
+     transparency. So WebKit gets a heavier frost: a thicker blur and a milkier
+     paper tint (which also sets a hard opacity floor so it can't be see-through),
+     with the strong refraction on top. Blink keeps the clearer default above.
+     The `.webkit` class is set in JS by a UA test — a CSS @supports query can't
+     reliably isolate Safari (the -webkit-named-image hack fails in current
+     Safari) and Blink-vs-WebKit isn't otherwise detectable in CSS. */
   html.webkit nav .logo, html.webkit nav .links, html.webkit .btn.ghost {
-    -webkit-backdrop-filter: blur(3px) saturate(1.6) url("#liquid-glass-strong");
-    backdrop-filter: blur(3px) saturate(1.6) url("#liquid-glass-strong");
+    background: color-mix(in srgb, var(--paper) 22%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.7) url("#liquid-glass-strong");
+    backdrop-filter: blur(14px) saturate(1.7) url("#liquid-glass-strong");
+  }
+  html.webkit nav.scrolled .logo, html.webkit nav.scrolled .links {
+    background: color-mix(in srgb, var(--paper) 55%, transparent);   /* keep ink readable past the hero */
   }
   .btn:active { transform: scale(.96); }
 
