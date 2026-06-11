@@ -32,9 +32,9 @@ network requests, so `file://` works too.)
 - **Liquid-glass nav & buttons** (ported from a shadcn LiquidButton to vanilla
   CSS): the nav is one merged pill that splits into two on scroll, with a hover
   underline that glides between links and parts their neighbours. Tinted buttons
-  frost, ghost buttons stay clear, all over a beveled glass lens — plus a tuned
-  SVG turbulence filter for a subtle backdrop refraction (gentle on Chrome,
-  frosted heavier with a stronger warp on Safari/WebKit, which renders it softly).
+  frost, ghost buttons stay clear, all over a beveled glass lens (backdrop blur
+  + tint + layered inset-shadow rims — one deterministic recipe that renders the
+  same in every engine).
 - **Split-flap stats heading**: the "by the numbers" headline resolves with a
   letter scramble — each glyph spins through a reel and locks left-to-right with
   a soft blur/fade focus-in.
