@@ -80,34 +80,51 @@
     transition: padding .4s var(--ease-out);
   }
   nav.scrolled { padding: 10px 20px; }
-  /* liquid glass: a translucent paper tint over a blurred, saturated
-     backdrop, hairline highlight borders and a soft drop. Two small pills
-     instead of a full-width bar keeps the backdrop blur region tiny. */
+  /* liquid glass, iOS-26 style: a nearly clear material — no surface
+     tints or sheens. The glassiness comes from the heavily blurred,
+     oversaturated backdrop showing through, plus light catching the rim:
+     a hairline all round, brightest where light enters (top-left),
+     dimmer where it exits (bottom-right). */
   nav .logo, nav .links {
     pointer-events: auto;
-    background: color-mix(in srgb, var(--paper) 40%, transparent);
-    backdrop-filter: blur(18px) saturate(1.7);
-    -webkit-backdrop-filter: blur(18px) saturate(1.7);
-    border: 1px solid rgba(255,255,255,.5);
+    position: relative;
+    background: color-mix(in srgb, var(--paper) 14%, transparent);
+    backdrop-filter: blur(24px) saturate(1.9);
+    -webkit-backdrop-filter: blur(24px) saturate(1.9);
     border-radius: 100px;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.55),
-                inset 0 -1px 0 rgba(255,255,255,.12),
-                0 8px 28px rgba(14,14,16,.10);
+    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.35),            /* hairline rim */
+                inset 1.5px 1.5px 1px -1px rgba(255,255,255,.85),  /* light entry */
+                inset -1.5px -1.5px 1px -1px rgba(255,255,255,.45),/* light exit */
+                0 8px 24px rgba(14,14,16,.12);
     transition: background .4s ease;
   }
-  /* the tint thickens past the hero so ink stays readable over busy
-     content (and over the dark DEPTH band) */
+  /* a touch more body past the hero so ink stays readable over busy
+     content (and over the dark DEPTH band) — still clear, never frosted */
   nav.scrolled .logo, nav.scrolled .links {
-    background: color-mix(in srgb, var(--paper) 68%, transparent);
+    background: color-mix(in srgb, var(--paper) 50%, transparent);
   }
   nav .logo { font-weight: 800; font-size: 18px; letter-spacing: -.02em; padding: 12px 22px; }
-  nav .links { display: flex; gap: 28px; font-size: 14px; padding: 13px 26px; }
+  /* tight gap — the links carry their own bubble padding now */
+  nav .links { display: flex; gap: 4px; font-size: 14px; padding: 8px 12px; }
+  /* each link is its own glass bubble: it materializes on hover with the
+     site spring, specular lip and all, like a droplet rising off the slab */
   nav .links a {
     color: inherit; text-decoration: none; position: relative;
+    padding: 6px 14px; border-radius: 100px;
+    transition: background .35s ease, box-shadow .35s ease,
+                transform .4s var(--spring);
   }
+  nav .links a:hover {
+    background: rgba(255,255,255,.3);
+    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.4),
+                inset 1px 1px 1px -.5px rgba(255,255,255,.9),
+                0 2px 8px rgba(14,14,16,.08);
+    transform: scale(1.07);
+  }
+  nav .links a:active { transform: scale(.94); }
   nav .links a::after {
-    content: ""; position: absolute; left: 0; bottom: -4px;
-    width: 100%; height: 1.5px; background: currentColor;
+    content: ""; position: absolute; left: 14px; bottom: 5px;
+    width: calc(100% - 28px); height: 1.5px; background: currentColor;
     transform: scaleX(0); transform-origin: 100% 50%;
     transition: transform .4s var(--ease-out);
   }
@@ -1325,7 +1342,7 @@
   let lastY = scrollY, vel = 0, skewX = 0, slideX = 0, velBlur = 0, velAb = 0, hintStill = 0;
   /* last-written values — per-frame style writes are skipped when nothing
      changed, so an idle page does no DOM work at all */
-  let wDotX, wDotY, wRingX, wRingY, wProg = '', wNav = null;
+  let wDotX, wDotY, wProg = '', wNav = null;
 
   let lastFrameT = performance.now();
   function frame(now) {
@@ -1334,22 +1351,16 @@
     const dtf = Math.min(2.5, (now - lastFrameT) / 16.7) || 1;
     lastFrameT = now;
 
-    // cursor — the lerp snaps once close so a parked pointer settles
-    // exactly and the writes below stop
+    // cursor — dot and ring both track the pointer 1:1 (no trailing lag).
+    // rx/ry stay lightly smoothed for the parallax nudge and the magnet
+    // orbit, which want softness; writes are gated so a parked pointer
+    // does nothing.
     rx = lerp(rx, mx, 0.18); ry = lerp(ry, my, 0.18);
     if (Math.abs(rx - mx) < .05 && Math.abs(ry - my) < .05) { rx = mx; ry = my; }
     if (mx !== wDotX || my !== wDotY) {
       dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`;
+      ring.style.left = mx + 'px'; ring.style.top = my + 'px';
       wDotX = mx; wDotY = my;
-    }
-    if (rx !== wRingX || ry !== wRingY) {
-      // left/top (the original) keeps the trail tight to the cursor — a
-      // transform promoted the ring to its own compositor layer that
-      // composited a frame late, reading as lag on the lerped ring. CSS
-      // centres it with a static translate(-50%,-50%). Writes are still
-      // gated, so a parked pointer does nothing.
-      ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
-      wRingX = rx; wRingY = ry;
     }
 
     // magnetic spring toward target, plus sibling drift (85% of a peer's
