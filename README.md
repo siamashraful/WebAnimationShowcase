@@ -26,9 +26,9 @@ network requests, so `file://` works too.)
   (jelly spring, cursor-orbiting magnetic letters, tilt tour + flip, scroll cycle,
   true 3D depth sway, velocity dash with speed lines and chromatic aberration).
 - **DEPTH band**: typographic parallax — three rows of the same word at different
-  sizes/blur/speeds (position-driven).
-- **MOTION lines**: velocity-driven shear, elastic slide, motion blur and channel
-  split that settle when scrolling stops (speed-driven).
+  sizes/blur/speeds (position-driven) — that tear into a cinematic glitch as you
+  scroll: velocity-driven shear plus sliced red/cyan channel-split ghosts that
+  settle crisp the moment you stop.
 - **Marquee**: endless JS-driven belt — drag it, fling it, wheel-scrub it.
 
 Everything is driven by CSS custom properties plus one `requestAnimationFrame` loop;

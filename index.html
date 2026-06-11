@@ -8,10 +8,10 @@
   :root {
     --ink: #0e0e10;
     --paper: #f7f6f3;
-    /* default: stock-market green — deep ticker green into bright gain green */
-    --accent: #047857;
-    --accent-2: #22c55e;
-    --accent-3: #84cc16;
+    /* default: Cobalt — deep cobalt into vivid azure and a sky-blue tint */
+    --accent: #1e40af;
+    --accent-2: #3b82f6;
+    --accent-3: #93c5fd;
     --grey: #6b7280;
     --radius: 20px;
     --spring: cubic-bezier(.22, 1.4, .36, 1);
@@ -653,6 +653,46 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
     opacity: .92;
   }
+  /* cinematic glitch: each row carries two ghost copies (data-text) that stay
+     invisible until the band is moving fast (.glitching, toggled in JS). Then
+     they flip on as red/cyan channels that tear into shifting horizontal
+     slices — screen-blended so they glow against the dark band. steps()
+     timing makes the slices jump (digital), never smoothly interpolate. */
+  .type-layer::before,
+  .type-layer::after {
+    content: attr(data-text);
+    position: absolute; left: 0; top: 0;
+    white-space: nowrap; pointer-events: none;
+    opacity: 0; mix-blend-mode: screen;
+  }
+  .parallax-band.glitching .type-layer::before {
+    color: #ff2d55;
+    animation: glitch-r .42s steps(1, end) infinite;
+  }
+  .parallax-band.glitching .type-layer::after {
+    color: #00e5ff;
+    animation: glitch-c .52s steps(1, end) infinite;
+  }
+  @keyframes glitch-r {
+    0%   { opacity: .9; clip-path: inset(8% 0 80% 0);  transform: translateX(-7px); }
+    14%  { opacity: .8; clip-path: inset(42% 0 41% 0); transform: translateX(9px); }
+    28%  { opacity: .9; clip-path: inset(70% 0 11% 0); transform: translateX(-12px); }
+    42%  { opacity: .5; clip-path: inset(20% 0 62% 0); transform: translateX(6px); }
+    56%  { opacity: .9; clip-path: inset(86% 0 2% 0);  transform: translateX(-9px); }
+    70%  { opacity: .8; clip-path: inset(4% 0 90% 0);  transform: translateX(11px); }
+    84%  { opacity: .9; clip-path: inset(54% 0 28% 0); transform: translateX(-5px); }
+    100% { opacity: .7; clip-path: inset(30% 0 55% 0); transform: translateX(8px); }
+  }
+  @keyframes glitch-c {
+    0%   { opacity: .85; clip-path: inset(60% 0 22% 0); transform: translateX(8px); }
+    13%  { opacity: .9;  clip-path: inset(14% 0 72% 0); transform: translateX(-10px); }
+    27%  { opacity: .6;  clip-path: inset(80% 0 6% 0);  transform: translateX(7px); }
+    41%  { opacity: .9;  clip-path: inset(34% 0 48% 0); transform: translateX(-8px); }
+    55%  { opacity: .8;  clip-path: inset(2% 0 88% 0);  transform: translateX(12px); }
+    69%  { opacity: .9;  clip-path: inset(48% 0 34% 0); transform: translateX(-6px); }
+    83%  { opacity: .7;  clip-path: inset(76% 0 10% 0); transform: translateX(10px); }
+    100% { opacity: .9;  clip-path: inset(22% 0 60% 0); transform: translateX(-9px); }
+  }
 
   /* ───────── animated counters ───────── */
   .stats {
@@ -668,18 +708,6 @@
     font-variant-numeric: tabular-nums;
   }
   .stat .label { margin-top: 8px; color: var(--grey); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
-
-  /* ───────── horizontal text scroll-skew ───────── */
-  .skew-line {
-    font-size: clamp(40px, 7vw, 96px);
-    font-weight: 800; letter-spacing: -.04em;
-    white-space: nowrap; will-change: transform, filter;
-    padding: 10px 0;
-    margin-left: -4%;    /* staggered starts now that the lines sit still */
-  }
-  .skew-line.alt { margin-left: -14%; }
-  .skew-wrap { overflow: hidden; padding: 80px 0; }
-  .skew-line.alt { color: transparent; -webkit-text-stroke: 1.5px var(--ink); }
 
   /* ───────── footer / CTA ───────── */
   footer {
@@ -1030,10 +1058,6 @@
 </section>
 
 <!-- VELOCITY SKEW LINES -->
-<div class="skew-wrap">
-  <div class="skew-line" data-dir="1">MOTION&nbsp;CREATES&nbsp;EMOTION&nbsp;—&nbsp;MOTION&nbsp;CREATES&nbsp;EMOTION&nbsp;—</div>
-  <div class="skew-line alt" data-dir="-1">SCROLL&nbsp;FASTER&nbsp;TO&nbsp;SHEAR&nbsp;ME&nbsp;—&nbsp;SCROLL&nbsp;FASTER&nbsp;TO&nbsp;SHEAR&nbsp;ME&nbsp;—</div>
-</div>
 
 <!-- MORE REVEAL VARIANTS -->
 <section class="block">
@@ -1092,7 +1116,7 @@
   const rr = (min, max) => min + Math.random() * (max - min);
 
   /* live physics config — remix re-rolls these */
-  const cfg = { tilt: 14, magnet: 0.32, skewMax: 12, skewVel: 0.55 };
+  const cfg = { tilt: 14, magnet: 0.32 };
 
   /* ── custom cursor with trailing ring ── */
   const dot = document.querySelector('.cursor-dot');
@@ -1372,8 +1396,9 @@
   const hint = document.querySelector('.scroll-hint');
   const layers = [...document.querySelectorAll('.type-layer')];
   const band = document.querySelector('.parallax-band');
-  const skews = [...document.querySelectorAll('.skew-line')];
-  let lastY = scrollY, vel = 0, skewX = 0, slideX = 0, velBlur = 0, velAb = 0, hintStill = 0;
+  // the cinematic glitch copies are pseudo-elements drawn from data-text
+  layers.forEach(l => { l.dataset.text = l.textContent; });
+  let lastY = scrollY, vel = 0, hintStill = 0, glitchOn = false;
   /* last-written values — per-frame style writes are skipped when nothing
      changed, so an idle page does no DOM work at all */
   let wDotX, wDotY, wProg = '', wNav = null;
@@ -1494,44 +1519,34 @@
     // own speed; the cursor nudges them with the same multipliers.
     // Geometry comes from the measure() cache: a getBoundingClientRect here
     // would force a reflow against this loop's own writes every frame.
+    // scroll velocity (lerped) drives both the DEPTH glitch and the skew lines
+    vel = lerp(vel, scrollY - lastY, 0.12);
+    lastY = scrollY;
+
     if (onScreen.get(band)) {
       const center = bandTop - scrollY + bandH / 2 - vh / 2;
       const pxn = rx / vw - .5;   // lerped cursor → smooth drift
+      // glitch shear: while the band moves, each row shears with scroll
+      // velocity and picks up per-frame slice jitter; the deeper (faster)
+      // rows shear harder. Past a speed gate the band also flips into the
+      // cinematic glitch (.glitching → CSS spawns sliced RGB ghost copies).
+      // Hysteresis on the gate so it bursts, not strobes, at the threshold.
+      // Everything scales to 0 / off at a standstill, so the rows settle crisp.
+      const g = Math.min(1, Math.abs(vel) / 45);
+      const want = glitchOn ? g > .07 : g > .18;
+      if (want !== glitchOn) { glitchOn = want; band.classList.toggle('glitching', want); }
       layers.forEach(l => {
         const sp = +l.dataset.speed;
-        const x = (center * -sp + pxn * sp * 220).toFixed(1);
-        if (x !== l.wx) {
-          l.style.transform = `translateX(calc(-50% + ${x}px))`;
-          l.wx = x;
+        let x = center * -sp + pxn * sp * 220;
+        let sk = 0;
+        if (g > .03) {
+          sk = Math.max(-16, Math.min(16, vel * sp * 1.3));
+          x += (Math.random() - .5) * g * 18 * sp;   // slice jitter
         }
+        const t = `translateX(calc(-50% + ${x.toFixed(1)}px)) skewX(${sk.toFixed(2)}deg)`;
+        if (t !== l.wx) { l.style.transform = t; l.wx = t; }
       });
-    }
-
-    // velocity lines — speed-only physics (no scroll-position drift, so the
-    // section reads differently from the DEPTH band's positional parallax):
-    // shear, elastic slide, motion blur and channel-split all scale with
-    // scroll velocity and spring back to a crisp standstill when it stops
-    vel = lerp(vel, scrollY - lastY, 0.12);
-    lastY = scrollY;
-    skewX = lerp(skewX, Math.max(-cfg.skewMax, Math.min(cfg.skewMax, vel * cfg.skewVel)), 0.2);
-    slideX = lerp(slideX, Math.max(-90, Math.min(90, vel * 2.2)), 0.12);
-    const speed = Math.abs(vel);
-    velBlur = lerp(velBlur, Math.min(7, speed * .09), .18);
-    velAb = lerp(velAb, Math.min(6, speed * .07), .18);
-    // the rounded strings stabilize once the springs settle, so a still
-    // page stops writing here; offscreen the lines aren't styled at all
-    if (onScreen.get(skewWrap)) skews.forEach(s => {
-      const dir = +s.dataset.dir;
-      const t = `translateX(${(slideX * dir).toFixed(1)}px) skewX(${(skewX * dir).toFixed(2)}deg)`;
-      const f = velBlur > .15 ? `blur(${velBlur.toFixed(1)}px)` : '';
-      const sh = velAb > .25
-        ? `${(-velAb * dir).toFixed(1)}px 0 rgba(244,63,94,.45), ${(velAb * dir).toFixed(1)}px 0 rgba(14,165,233,.45)`
-        : '';
-      if (t + f + sh !== s.wk) {
-        s.style.transform = t; s.style.filter = f; s.style.textShadow = sh;
-        s.wk = t + f + sh;
-      }
-    });
+    } else if (glitchOn) { glitchOn = false; band.classList.remove('glitching'); }
 
     requestAnimationFrame(frame);
   }
@@ -1572,7 +1587,6 @@
      pauses their infinite keyframes in CSS. Nothing here changes layout
      after load except a resize, so that's the only re-measure trigger. */
   const hero = document.querySelector('.hero');
-  const skewWrap = document.querySelector('.skew-wrap');
   let docMax = 0, bandTop = 0, bandH = 0, period = 0, vw = innerWidth, vh = innerHeight;
   function measure() {
     docMax = document.documentElement.scrollHeight - innerHeight;
@@ -1584,7 +1598,7 @@
   addEventListener('resize', measure);
   if (document.fonts) document.fonts.ready.then(measure);   // late font swap can change widths
 
-  const onScreen = new Map([[hero, true], [marquee, true], [band, true], [skewWrap, true]]);
+  const onScreen = new Map([[hero, true], [marquee, true], [band, true]]);
   const visIO = new IntersectionObserver(entries => entries.forEach(en => {
     onScreen.set(en.target, en.isIntersecting);
     en.target.classList.toggle('offstage', !en.isIntersecting);
@@ -1593,7 +1607,7 @@
 
   /* ── REMIX: re-roll every animation parameter and replay ── */
   const palettes = [
-    ['#047857', '#22c55e', '#84cc16'],   // stock-market green (default)
+    ['#047857', '#22c55e', '#84cc16'],   // stock-market green (:root default is cobalt — see top)
     ['#4f46e5', '#ec4899', '#f59e0b'],   // indigo / pink / amber
     ['#059669', '#0891b2', '#84cc16'],   // emerald / cyan / lime
     ['#dc2626', '#ea580c', '#facc15'],   // red / orange / gold
@@ -1646,8 +1660,6 @@
     // new physics
     cfg.tilt = rr(6, 26);
     cfg.magnet = rr(0.15, 0.55);
-    cfg.skewMax = rr(4, 20);
-    cfg.skewVel = rr(0.3, 1.0);
 
     // reshuffle blobs — size, tempo and how hard each one chases the cursor
     blobs.forEach((b, i) => {
