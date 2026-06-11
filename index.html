@@ -6,8 +6,15 @@
 <title>Motion Studio — Framer-style Animations</title>
 <style>
   :root {
+    color-scheme: light;
     --ink: #0e0e10;
     --paper: #f7f6f3;
+    /* raised surfaces (cards) and the marquee belt — split from --paper so
+       night mode can lift them off the page instead of matching it */
+    --card: #fff;
+    --card-edge: #e8e6e0;
+    --belt: #fff;
+    --belt-edge: #e3e1db;
     /* default: Cobalt — deep cobalt into vivid azure and a sky-blue tint */
     --accent: #1e40af;
     --accent-2: #3b82f6;
@@ -52,6 +59,30 @@
     --die-r: 8px;
   }
 
+  /* ───────── night mode (html.night, flipped by the nav toggle) ─────────
+     The studio after hours. Paper deepens to a charcoal family (each tint
+     the after-dark twin of a day paper — remix() rolls from the matching
+     array), ink warms to lamplight, cards lift one step off the page, and
+     clear glass — which now sits over dark content — swaps its black lens
+     bevel for the white specular stack. Accents, frost and physics are
+     already palette-driven and need no remap. */
+  html.night {
+    color-scheme: dark;
+    --ink: #edeae4;
+    --paper: #15161a;
+    --grey: #9b9da6;
+    --card: #1c1d23;
+    --card-edge: #2a2b33;
+    --belt: #1d1e24;
+    --belt-edge: #2a2b33;
+    --glass-rim-dark:
+      0 0 8px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08),
+      inset 3px 3px .5px -3.5px rgba(255,255,255,.09), inset -3px -3px .5px -3.5px rgba(255,255,255,.85),
+      inset 1px 1px 1px -.5px rgba(255,255,255,.6), inset -1px -1px 1px -.5px rgba(255,255,255,.6),
+      inset 0 0 6px 6px rgba(255,255,255,.12), inset 0 0 2px 2px rgba(255,255,255,.06),
+      0 0 12px rgba(0,0,0,.15);
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   html { scroll-behavior: smooth; }
@@ -62,7 +93,7 @@
     color: var(--ink);
     overflow-x: hidden;
     cursor: none;
-    transition: background .6s ease;
+    transition: background .6s ease, color .6s ease;
   }
 
   ::selection { background: var(--accent); color: #fff; }
@@ -144,13 +175,21 @@
   }
   nav .logo { font-weight: 800; font-size: 18px; letter-spacing: -.02em; padding: 12px 22px; }
   nav .links { display: flex; gap: 2px; font-size: 14px; padding: 8px 10px; }
-  /* MERGED state (top of page): the two pills slide in to meet at screen
-     centre and square off their inner corners, reading as one continuous
-     segmented bar. translateX uses 100% = the element's own width, so the
-     maths holds at any font/remix width. On scroll the transforms release
-     and they spring back apart to the edges as two separate pills. */
-  nav:not(.scrolled) .logo  { transform: translateX(calc(50vw - 100% - 28px)); border-radius: 100px 0 0 100px; }
-  nav:not(.scrolled) .links { transform: translateX(calc(100% - 50vw + 28px)); border-radius: 0 100px 100px 0; }
+  /* MERGED state (top of page): the two pills slide in to abut and square
+     off their inner corners, reading as one continuous segmented bar that is
+     centred AS A UNIT (seam-at-centre skewed the bar toward the wider links
+     pill). Each pill's own width comes in as % of translateX; the partner's
+     width arrives via --logo-w/--links-w, measured in measure() — fallbacks
+     only cover the pre-script first frame. On scroll the transforms release
+     and the pills spring back apart to the edges. */
+  nav:not(.scrolled) .logo  {
+    transform: translateX(calc(50vw - 50% - var(--links-w, 350px) / 2 - 28px));
+    border-radius: 100px 0 0 100px;
+  }
+  nav:not(.scrolled) .links {
+    transform: translateX(calc(50% + var(--logo-w, 162px) / 2 - 50vw + 28px));
+    border-radius: 0 100px 100px 0;
+  }
   /* a single thin underline that glides from item to item on the spring —
      it stretches to the new word's width as it travels and settles, so the
      hover reads as one continuous flowing line. placed/sized in JS */
@@ -168,6 +207,69 @@
     padding: 6px 14px; border-radius: 100px;
     transition: transform .45s var(--spring);
   }
+
+  /* ───────── night toggle (right cap of the links pill) ─────────
+     An iOS-style switch themed to the job: the knob is a small sun on a
+     daylight track; flip it and the track deepens to indigo, three stars
+     blink in where the knob was, and a cratered moon fades over the sun.
+     The knob travels on the site's own --spring (so it overshoots and
+     settles) and stretches while held, like the hardware original. Sized
+     under the anchors' line height so the pill keeps its tuned height. */
+  .nite {
+    --nite-w: 46px; --nite-h: 26px; --nite-k: 20px;
+    position: relative; flex: none; align-self: center;
+    width: var(--nite-w); height: var(--nite-h);
+    margin-left: 8px;
+    border: none; border-radius: 100px; cursor: none;
+    background: linear-gradient(120deg, #bcd9ff, #eef4ff 55%, #ffe9c4);
+    box-shadow: inset 0 1px 3px rgba(14,14,16,.22);
+  }
+  .nite::before {   /* night-sky layer, crossfaded in under the knob */
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(120deg, #1a2040, #0d1024 70%);
+    opacity: 0; transition: opacity .45s ease;
+  }
+  .nite::after {    /* stars over the side the knob vacates */
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background:
+      radial-gradient(circle 1px   at 26% 30%, #fff 0 88%, transparent 100%),
+      radial-gradient(circle 1.5px at 40% 66%, rgba(255,255,255,.95) 0 88%, transparent 100%),
+      radial-gradient(circle 1px   at 14% 60%, rgba(255,255,255,.7) 0 88%, transparent 100%);
+    opacity: 0; transform: translateX(4px);
+    transition: opacity .5s ease .12s, transform .5s var(--ease-out) .12s;
+  }
+  html.night .nite::before { opacity: 1; }
+  html.night .nite::after  { opacity: 1; transform: none; }
+  .nite .knob {
+    position: absolute; top: 3px; left: 3px;
+    width: var(--nite-k); height: var(--nite-k);
+    border-radius: 100px;
+    /* the sun: warm core, white limb */
+    background: radial-gradient(circle at 42% 38%, #ffdf9e 0 28%, #fff 75%);
+    box-shadow: 0 2px 5px rgba(10,10,14,.4);
+    transition: transform .5s var(--spring), width .25s var(--spring);
+  }
+  .nite .knob::after {   /* the moon: pale disc + craters, fades over the sun */
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background:
+      radial-gradient(circle 2.5px at 36% 38%, rgba(116,122,148,.45) 0 88%, transparent 100%),
+      radial-gradient(circle 1.8px at 62% 64%, rgba(116,122,148,.4) 0 88%, transparent 100%),
+      radial-gradient(circle 1.4px at 56% 24%, rgba(116,122,148,.32) 0 88%, transparent 100%),
+      radial-gradient(circle at 40% 36%, #fdfdff 0 30%, #d6d8e4 80%);
+    opacity: 0; transition: opacity .4s ease;
+  }
+  html.night .nite .knob {
+    transform: translateX(calc(var(--nite-w) - var(--nite-k) - 6px));
+  }
+  html.night .nite .knob::after { opacity: 1; }
+  /* held: the knob stretches; when on, it grows leftward so the trailing
+     edge stays planted against the end of the track */
+  .nite:active .knob { width: calc(var(--nite-k) + 6px); }
+  html.night .nite:active .knob {
+    transform: translateX(calc(var(--nite-w) - var(--nite-k) - 12px));
+  }
+  .nite:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  @media (hover: none) { .nite { cursor: pointer; } }
 
   /* ───────── hero ───────── */
   .hero {
@@ -359,7 +461,9 @@
      own colour with the specular (white-inset) lens rim. The frost lets the
      page haze through while ink/white text stays legible. */
   .btn.primary {
-    background: color-mix(in srgb, var(--ink) 90%, transparent); color: #fff;
+    /* paper-on-ink, not white-on-ink — at night ink flips light and the
+       text must flip dark with the paper to stay legible */
+    background: color-mix(in srgb, var(--ink) 90%, transparent); color: var(--paper);
     -webkit-backdrop-filter: blur(16px) saturate(1.4);
     backdrop-filter: blur(16px) saturate(1.4);
     box-shadow: var(--glass-rim-light);
@@ -367,6 +471,10 @@
   .btn.primary:hover {
     transform: scale(1.06);
     background: color-mix(in srgb, var(--accent) 90%, transparent);
+    /* the slab tints to the accent — text goes white WITH it (not paper,
+       which is near-black at night): --accent is every palette's deepest
+       tone, so white reads on all 21, same as the remix pill's label */
+    color: #fff;
   }
   /* non-tinted button → REGULAR clear liquid glass, same recipe as the nav
      pills: frosted blurred material + dark-inset bevel (no displacement) */
@@ -386,12 +494,12 @@
   .marquee {
     overflow: hidden; white-space: nowrap;
     padding: 36px 0;
-    border-top: 1px solid #e3e1db; border-bottom: 1px solid #e3e1db;
-    /* --belt is both the belt background AND the outlined words' fill — the
-       paint-order trick below only works while the two stay identical, so
-       tint the belt here and the fill follows */
-    --belt: #fff;
+    border-top: 1px solid var(--belt-edge); border-bottom: 1px solid var(--belt-edge);
+    /* --belt (on :root, night-remapped) is both the belt background AND the
+       outlined words' fill — the paint-order trick below only works while
+       the two stay identical, so tint the belt there and the fill follows */
     background: var(--belt);
+    transition: background .6s ease, border-color .6s ease;
     touch-action: pan-y;    /* horizontal drag scrubs the belt, vertical still scrolls the page */
     user-select: none;
   }
@@ -479,11 +587,12 @@
     gap: 28px; margin-top: 56px;
   }
   .card {
-    background: #fff;
+    background: var(--card);
     border-radius: var(--radius);
     padding: 38px 32px;
-    border: 1px solid #e8e6e0;
-    transition: transform .5s var(--spring), box-shadow .5s var(--spring);
+    border: 1px solid var(--card-edge);
+    transition: transform .5s var(--spring), box-shadow .5s var(--spring),
+                background .6s ease, border-color .6s ease;
     transform-style: preserve-3d;
     will-change: transform;
     position: relative;
@@ -500,6 +609,14 @@
   .card:hover::before { opacity: 1; }
   .card:hover {
     box-shadow: 0 24px 60px rgba(14,14,16,.12);
+  }
+  /* night: the indigo cursor halo is invisible on charcoal — moonlight it */
+  html.night .card::before {
+    background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%),
+                rgba(255,255,255,.06), transparent 45%);
+  }
+  html.night .card:hover {
+    box-shadow: 0 24px 60px rgba(0,0,0,.5);
   }
   .card .icon {
     width: 54px; height: 54px; border-radius: 14px;
@@ -684,11 +801,16 @@
     min-height: 85vh;
     display: flex; flex-direction: column;
     justify-content: center; align-items: center;
-    background: var(--ink);
+    /* NOT var(--ink): the band is the page's deep-space moment and must stay
+       dark while ink flips light at night — after dark it drops BELOW the
+       night paper so it still reads as the darkest place on the page */
+    background: #0e0e10;
     color: #fff;
     overflow: hidden;
     text-align: center;
+    transition: background .6s ease;
   }
+  html.night .parallax-band { background: #08080c; }
   .parallax-band h2 {
     font-size: clamp(36px, 6vw, 80px);
     font-weight: 800; letter-spacing: -.03em;
@@ -846,10 +968,12 @@
     /* keeps the screen-blended blobs compositing against the orb only,
        not the button gradient behind it */
     isolation: isolate;
-    /* off-centre hot core over a dark base so the blobs read on any palette */
+    /* off-centre hot core over a dark base so the blobs read on any palette.
+       Literal, NOT var(--ink): ink flips light at night, the orb's dark
+       housing doesn't */
     background:
       radial-gradient(circle at 38% 36%, #fff 0 10%, rgba(255,255,255,.65) 24%, transparent 52%),
-      var(--ink);
+      #0e0e10;
     /* the zero-size inset is a real entry so the press state's white flood
        interpolates instead of jumping (shadow lists only animate when they
        pair up inset-for-inset) */
@@ -1058,7 +1182,7 @@
   .remix-tip {
     position: fixed; right: 28px; bottom: 104px; z-index: 951;
     max-width: 260px;
-    background: var(--ink); color: #fff;
+    background: var(--ink); color: var(--paper);   /* pairs with ink in both modes */
     padding: 14px 18px; border-radius: 14px;
     font-size: 13.5px; line-height: 1.55;
     box-shadow: 0 14px 40px rgba(14,14,16,.3);
@@ -1143,6 +1267,7 @@
     <a href="#about" data-hover>About</a>
     <a href="#stats" data-hover>Stats</a>
     <a href="#contact" data-hover>Contact</a>
+    <button class="nite" id="niteToggle" role="switch" aria-checked="false" aria-label="Night mode" data-hover><span class="knob" aria-hidden="true"></span></button>
   </div>
 </nav>
 
@@ -1832,6 +1957,12 @@
     bandTop = band.offsetTop; bandH = band.offsetHeight;
     period = track.scrollWidth / 4;   // width of one marquee content copy
     vw = innerWidth; vh = innerHeight;
+    // each nav pill needs its PARTNER's width to centre the merged bar as a
+    // unit (its own width comes free as % inside translateX) — measured here
+    // so the merge maths stays width-agnostic without per-frame reads
+    const st = document.documentElement.style;
+    st.setProperty('--logo-w', document.querySelector('nav .logo').offsetWidth + 'px');
+    st.setProperty('--links-w', navLinksEl.offsetWidth + 'px');
   }
   measure();
   addEventListener('resize', measure);
@@ -1872,6 +2003,12 @@
     '#f7f6f3', '#f1f4ff', '#fdf6ee', '#f0faf4', '#fdf2f6', '#f4f4f5',
     '#fbf7ef', '#eef6f6', '#f6f0fa', '#f7f2ee', '#eff3f8', '#f3f7ec',
   ];
+  // each one the after-dark twin of the day paper above it (same hue lean,
+  // deep charcoal value) — remix() rolls from whichever family is active
+  const papersNight = [
+    '#15161a', '#131724', '#1b1610', '#121a15', '#1c1318', '#17171a',
+    '#1a1712', '#121a1a', '#181323', '#191512', '#141921', '#161a11',
+  ];
   const variants = ['', 'from-left', 'from-right', 'zoom', 'flip'];
   const blobs = [...document.querySelectorAll('.blob')];
   /* per-blob cursor gravity (pull strength) — three different depths;
@@ -1888,7 +2025,8 @@
     root.setProperty('--accent', pal[0]);
     root.setProperty('--accent-2', pal[1]);
     root.setProperty('--accent-3', pal[2]);
-    root.setProperty('--paper', rand(papers));
+    root.setProperty('--paper',
+      rand(document.documentElement.classList.contains('night') ? papersNight : papers));
     root.setProperty('--radius', Math.round(rr(8, 30)) + 'px');
 
     // new spring + ease curves (bouncier or snappier each roll)
@@ -2041,6 +2179,26 @@
     clearTimeout(tipTimer);
     tip.classList.remove('show');
   });
+
+  /* ── night mode (html.night + the nav switch) ──
+     CSS owns the remap; JS only flips the class — except --paper, which
+     remix() writes inline and so must be steered back into the active
+     family (papers/papersNight) whenever the mode changes after a remix. */
+  const nite = document.getElementById('niteToggle');
+  function setNight(on, reroll) {
+    document.documentElement.classList.toggle('night', on);
+    nite.setAttribute('aria-checked', on);
+    if (reroll && document.documentElement.style.getPropertyValue('--paper'))
+      document.documentElement.style.setProperty('--paper', rand(on ? papersNight : papers));
+    try { localStorage.setItem('night', on ? '1' : '0'); } catch (e) { /* file:// may deny */ }
+  }
+  nite.addEventListener('click', () =>
+    setNight(!document.documentElement.classList.contains('night'), true));
+  // first visit follows the OS; after that, the visitor's own choice wins
+  let savedNight = null;
+  try { savedNight = localStorage.getItem('night'); } catch (e) {}
+  setNight(savedNight !== null ? savedNight === '1'
+                               : matchMedia('(prefers-color-scheme: dark)').matches, false);
 })();
 </script>
 </body>

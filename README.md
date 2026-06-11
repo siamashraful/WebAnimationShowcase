@@ -38,6 +38,11 @@ network requests, so `file://` works too.)
   frost, ghost buttons stay clear, all over a beveled glass lens (backdrop blur
   + tint + layered inset-shadow rims — one deterministic recipe that renders the
   same in every engine).
+- **Night mode**: an iOS-style switch at the end of the nav pill — the sun knob
+  slides on the page's spring, stretches while held, and eclipses into a
+  cratered moon as stars blink into the track. Twelve charcoal paper tints
+  mirror the twelve daylight ones, so Remix keeps re-tinting the room after
+  dark; the choice is remembered, and first visits follow your OS setting.
 - **Split-flap stats heading**: the "by the numbers" headline resolves with a
   letter scramble — each glyph spins through a reel and locks left-to-right with
   a soft blur/fade focus-in.
