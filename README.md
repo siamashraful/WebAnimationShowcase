@@ -33,8 +33,8 @@ network requests, so `file://` works too.)
   CSS): the nav is one merged pill that splits into two on scroll, with a hover
   underline that glides between links and parts their neighbours. Tinted buttons
   frost, ghost buttons stay clear, all over a beveled glass lens — plus a tuned
-  SVG turbulence filter for a subtle backdrop refraction (dialed stronger on
-  Safari, gentle on Chrome).
+  SVG turbulence filter for a subtle backdrop refraction (gentle on Chrome,
+  frosted heavier with a stronger warp on Safari/WebKit, which renders it softly).
 - **Split-flap stats heading**: the "by the numbers" headline resolves with a
   letter scramble — each glyph spins through a reel and locks left-to-right with
   a soft blur/fade focus-in.
