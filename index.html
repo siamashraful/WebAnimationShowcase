@@ -382,6 +382,19 @@
     opacity: 1;
     transform: none;
   }
+  /* letter-scramble heading: words stay intact for wrapping; each glyph sits
+     in a fixed-width slot so the shuffle can't reflow the line, and unresolved
+     glyphs fade/blur until they lock (JS toggles .shuf, then restores plain
+     text once settled) */
+  /* fade-only reveal (no translate) so the box doesn't resize mid-animation
+     and re-trip the observer — the scramble itself is the entrance motion */
+  .reveal.scramble { transform: none; }
+  .scramble .w { display: inline-block; }
+  .scramble .ch {
+    display: inline-block; text-align: center;
+    transition: opacity .45s var(--ease-out), filter .45s var(--ease-out);
+  }
+  .scramble .ch.shuf { opacity: .3; filter: blur(3px); }
 
   /* stagger children */
   .stagger > * {
@@ -1048,12 +1061,12 @@
 <!-- STATS -->
 <section class="block" id="stats">
   <div class="eyebrow reveal">By the numbers</div>
-  <h2 class="title reveal from-left">Animated counters that spring to their target.</h2>
+  <h2 class="title reveal scramble">Animated counters that spring to their target.</h2>
   <div class="stats reveal">
     <div class="stat"><div class="num" data-count="60" data-suffix="fps">0</div><div class="label">Butter smooth</div></div>
-    <div class="stat"><div class="num" data-count="14" data-suffix="">0</div><div class="label">Animation types</div></div>
-    <div class="stat"><div class="num" data-count="0" data-suffix=" deps">0</div><div class="label">Frameworks used</div></div>
-    <div class="stat"><div class="num" data-count="100" data-suffix="%">0</div><div class="label">Hand-rolled</div></div>
+    <div class="stat"><div class="num" data-count="20" data-suffix="">0</div><div class="label">Animation types</div></div>
+    <div class="stat"><div class="num" data-count="1" data-suffix=" file">0</div><div class="label">No build step</div></div>
+    <div class="stat"><div class="num" data-count="0" data-suffix=" deps">0</div><div class="label">Zero frameworks</div></div>
   </div>
 </section>
 
@@ -1320,6 +1333,61 @@
     lapTheWord();
   });
 
+  /* ── letter-scramble entrance for the stats heading ──
+     split into per-word / per-char spans; each letter spins through a reel
+     and resolves left-to-right with a soft focus-in (blur + fade lifts off
+     the unresolved glyphs). glyph slots are width-frozen so the shuffle never
+     reflows the line, and the crisp original text is restored at the end so
+     kerning stays pixel-perfect once it settles. */
+  const SCRAMBLE_LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+  const scrambleSet = c => (c >= 'A' && c <= 'Z') ? SCRAMBLE_LETTERS.toUpperCase() : SCRAMBLE_LETTERS;
+  function scrambleIn(el) {
+    const full = el.dataset.full || (el.dataset.full = el.textContent);
+    const gen = el._gen = (el._gen || 0) + 1;
+    el._scrambling = true;
+    el.textContent = '';
+    const chs = [];
+    full.split(' ').forEach((w, wi) => {
+      if (wi) el.appendChild(document.createTextNode(' '));
+      const ws = document.createElement('span'); ws.className = 'w';
+      for (const c of w) {
+        const cs = document.createElement('span'); cs.className = 'ch';
+        cs.textContent = c; cs._final = c; cs._fixed = !/[a-z]/i.test(c);
+        ws.appendChild(cs); chs.push(cs);
+      }
+      el.appendChild(ws);
+    });
+    chs.forEach(cs => { cs.style.width = cs.offsetWidth + 'px'; });   // freeze slots from the final glyph (one-time read)
+    chs.forEach((cs, i) => {                                          // …then start each letter pre-scrambled
+      if (cs._fixed) return;
+      cs.classList.add('shuf');
+      cs.textContent = scrambleSet(cs._final)[(i * 7) % 26];
+    });
+    const lockBase = 180, lockStep = 34, tickMs = 55;
+    let t0 = 0, lastTick = 0, reel = 0;
+    function frame(now) {
+      if (el._gen !== gen) return;            // a newer run superseded this one
+      if (!t0) { t0 = now; lastTick = now; }  // anchor timing to the rAF clock (not performance.now)
+      const elapsed = now - t0;
+      const tick = now - lastTick >= tickMs;
+      if (tick) { lastTick = now; reel++; }
+      let done = true;
+      for (let i = 0; i < chs.length; i++) {
+        const cs = chs[i];
+        if (cs._fixed) continue;
+        if (elapsed >= lockBase + i * lockStep) {
+          if (cs.classList.contains('shuf')) { cs.textContent = cs._final; cs.classList.remove('shuf'); }
+        } else {
+          done = false;
+          if (tick) cs.textContent = scrambleSet(cs._final)[(reel + i * 5) % 26];
+        }
+      }
+      if (done) { el.textContent = full; el._scrambling = false; }   // restore crisp original (perfect kerning)
+      else requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
   /* ── scroll reveals (re-triggerable, with hysteresis) ──
      The bottom rootMargin shrinks the trigger zone: an element must rise
      ~110px above the bottom edge before revealing, so the animation plays
@@ -1331,8 +1399,14 @@
      symmetric threshold would make edge cards toggle in a loop. */
   const io = new IntersectionObserver(entries => {
     entries.forEach(en => {
-      if (en.intersectionRatio >= 0.2) en.target.classList.add('in');
-      else if (!en.isIntersecting) en.target.classList.remove('in');
+      const el = en.target;
+      if (en.intersectionRatio >= 0.2) {
+        const wasIn = el.classList.contains('in');
+        el.classList.add('in');
+        // the stats heading shuffles its letters in the moment it reveals
+        if (!wasIn && el.classList.contains('scramble') && !el._scrambling) scrambleIn(el);
+      }
+      else if (!en.isIntersecting) { el.classList.remove('in'); el._scrambling = false; }
     });
   }, { threshold: [0, 0.2], rootMargin: '0px 0px -110px 0px' });
   document.querySelectorAll('.reveal, .stagger').forEach(el => io.observe(el));
