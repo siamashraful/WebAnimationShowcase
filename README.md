@@ -19,9 +19,12 @@ network requests, so `file://` works too.)
 
 ## Highlights
 
-- **Remix button** (bottom right): re-rolls the entire page — 21 color palettes,
-  spring curves, tilt/magnet physics, reveal variants — with a full-screen radial
-  wipe and a 3D tumbling-dice morph.
+- **Remix button** (bottom right): idles as a Siri-style orb — a dark glass
+  sphere with a hot core and palette-tinted blobs swirling at never-repeating
+  periods — then re-rolls the entire page on press: 21 color palettes, spring
+  curves, tilt/magnet physics, reveal variants, even the orb's own rhythm —
+  with a full-screen radial wipe and a 3D tumbling-dice morph (the orb shrinks
+  into the die's first pip; the die is frosted glass like the pill).
 - **"What's inside" cards**: press anywhere on a card for a concept-matched effect
   (jelly spring, cursor-orbiting magnetic letters, tilt tour + flip, scroll cycle,
   true 3D depth sway, velocity dash with speed lines and chromatic aberration).
