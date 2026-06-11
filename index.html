@@ -101,18 +101,18 @@
     transition: padding .4s var(--ease-out);
   }
   nav.scrolled { padding: 10px 20px; }
-  /* liquid glass: a nearly clear, blurred material that gently REFRACTS the
-     page behind it (the #liquid-glass turbulence→displacement filter, tuned
-     to a faint shimmer so Chrome doesn't read wavy), plus a lens bevel from a
-     stack of tight inset shadows — sharp dark rims, a soft inner vignette and
-     a faint outer halo. Ported from a shadcn LiquidButton. Engines without
-     backdrop url() support fall back to blur + bevel. */
+  /* liquid glass: a frosted, blurred material with a lens bevel from a stack
+     of tight inset shadows — sharp dark rims, a soft inner vignette and a
+     faint outer halo. Ported from a shadcn LiquidButton. Blur + tint + bevel
+     only — no SVG backdrop displacement: url() on backdrop-filter is
+     non-interoperable (wavy in Blink, near-transparent in WebKit), so a single
+     deterministic recipe that renders the same in every engine is used. */
   nav .logo, nav .links {
     pointer-events: auto;
     position: relative;
-    background: color-mix(in srgb, var(--paper) 10%, transparent);
-    backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass");
-    -webkit-backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass");
+    background: color-mix(in srgb, var(--paper) 16%, transparent);
+    backdrop-filter: blur(10px) saturate(1.7);
+    -webkit-backdrop-filter: blur(10px) saturate(1.7);
     border-radius: 100px;
     box-shadow: var(--glass-rim-dark);             /* clear-glass lens bevel */
     transition: background .4s ease,
@@ -351,32 +351,16 @@
     background: color-mix(in srgb, var(--accent) 90%, transparent);
   }
   /* non-tinted button → REGULAR clear liquid glass, same recipe as the nav
-     pills: near-clear blurred material, gentle refraction, dark-inset bevel */
+     pills: frosted blurred material + dark-inset bevel (no displacement) */
   .btn.ghost {
-    background: color-mix(in srgb, var(--paper) 10%, transparent); color: var(--ink);
-    -webkit-backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass");
-    backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass");
+    background: color-mix(in srgb, var(--paper) 16%, transparent); color: var(--ink);
+    -webkit-backdrop-filter: blur(10px) saturate(1.7);
+    backdrop-filter: blur(10px) saturate(1.7);
     box-shadow: var(--glass-rim-dark);
   }
   .btn.ghost:hover {
     transform: scale(1.06);
-    background: color-mix(in srgb, var(--paper) 24%, transparent);
-  }
-  /* WebKit only: it renders url() on backdrop-filter so softly that even the
-     strong refraction left almost no frosted material — the pills read as bare
-     transparency. So WebKit gets a heavier frost: a thicker blur and a milkier
-     paper tint (which also sets a hard opacity floor so it can't be see-through),
-     with the strong refraction on top. Blink keeps the clearer default above.
-     The `.webkit` class is set in JS by a UA test — a CSS @supports query can't
-     reliably isolate Safari (the -webkit-named-image hack fails in current
-     Safari) and Blink-vs-WebKit isn't otherwise detectable in CSS. */
-  html.webkit nav .logo, html.webkit nav .links, html.webkit .btn.ghost {
-    background: color-mix(in srgb, var(--paper) 22%, transparent);
-    -webkit-backdrop-filter: blur(14px) saturate(1.7) url("#liquid-glass-strong");
-    backdrop-filter: blur(14px) saturate(1.7) url("#liquid-glass-strong");
-  }
-  html.webkit nav.scrolled .logo, html.webkit nav.scrolled .links {
-    background: color-mix(in srgb, var(--paper) 55%, transparent);   /* keep ink readable past the hero */
+    background: color-mix(in srgb, var(--paper) 30%, transparent);
   }
   .btn:active { transform: scale(.96); }
 
@@ -1023,31 +1007,6 @@
 </head>
 <body>
 
-<!-- liquid-glass refraction: turbulence → displacement, referenced by the
-     glass backdrop-filters. Two strengths, because Blink and WebKit render
-     url() on backdrop-filter very differently:
-       #liquid-glass        — gentle (scale 6); the default for everyone,
-                              tuned so Chrome reads as a shimmer not waves.
-       #liquid-glass-strong — the original strong refraction (scale 40);
-                              WebKit applies url() so softly that the gentle
-                              one looks almost clear there, so `html.webkit`
-                              (set in JS by a UA test) swaps it up to this one.
-     Engines without backdrop url() support just show blur + bevel. -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <filter id="liquid-glass" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.02" numOctaves="1" seed="7" result="noise"/>
-      <feGaussianBlur in="noise" stdDeviation="1.4" result="blurred"/>
-      <feDisplacementMap in="SourceGraphic" in2="blurred" scale="6" xChannelSelector="R" yChannelSelector="B"/>
-    </filter>
-    <filter id="liquid-glass-strong" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.012" numOctaves="2" seed="7" result="noise"/>
-      <feGaussianBlur in="noise" stdDeviation="2" result="blurred"/>
-      <feDisplacementMap in="SourceGraphic" in2="blurred" scale="40" xChannelSelector="R" yChannelSelector="B"/>
-    </filter>
-  </defs>
-</svg>
-
 <div class="cursor-ring"></div>
 <div class="cursor-dot"></div>
 <div class="progress" id="progress"></div>
@@ -1202,14 +1161,6 @@
 
 <script>
 (() => {
-  /* WebKit (Safari + all iOS browsers) renders url() on backdrop-filter far
-     more softly than Blink, so it needs the stronger #liquid-glass-strong
-     refraction (Chrome gets the gentle default). CSS can't reliably tell the
-     two engines apart, so flag it here: AppleWebKit but not Chrome/Chromium. */
-  if (/AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium/.test(navigator.userAgent)) {
-    document.documentElement.classList.add('webkit');
-  }
-
   const lerp = (a, b, t) => a + (b - a) * t;
   const rand = a => a[Math.floor(Math.random() * a.length)];
   const rr = (min, max) => min + Math.random() * (max - min);
