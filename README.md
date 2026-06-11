@@ -29,6 +29,15 @@ network requests, so `file://` works too.)
   sizes/blur/speeds (position-driven) — that tear into a cinematic glitch as you
   scroll: velocity-driven shear plus sliced red/cyan channel-split ghosts that
   settle crisp the moment you stop.
+- **Liquid-glass nav & buttons** (ported from a shadcn LiquidButton to vanilla
+  CSS): the nav is one merged pill that splits into two on scroll, with a hover
+  underline that glides between links and parts their neighbours. Tinted buttons
+  frost, ghost buttons stay clear, all over a beveled glass lens — plus a tuned
+  SVG turbulence filter for a subtle backdrop refraction (dialed stronger on
+  Safari, gentle on Chrome).
+- **Split-flap stats heading**: the "by the numbers" headline resolves with a
+  letter scramble — each glyph spins through a reel and locks left-to-right with
+  a soft blur/fade focus-in.
 - **Marquee**: endless JS-driven belt — drag it, fling it, wheel-scrub it.
 
 Everything is driven by CSS custom properties plus one `requestAnimationFrame` loop;

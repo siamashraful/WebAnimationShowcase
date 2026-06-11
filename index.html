@@ -362,15 +362,15 @@
     transform: scale(1.06);
     background: color-mix(in srgb, var(--paper) 24%, transparent);
   }
-  /* Safari only: WebKit applies url() on backdrop-filter so softly that the
-     gentle filter looks almost clear, so swap the glass surfaces up to the
-     stronger refraction. -webkit-named-image is a WebKit-exclusive feature,
-     so Chrome/Firefox skip this block and keep the gentle default. */
-  @supports (background: -webkit-named-image(i)) {
-    nav .logo, nav .links, .btn.ghost {
-      -webkit-backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass-strong");
-      backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass-strong");
-    }
+  /* WebKit only: it applies url() on backdrop-filter so softly that the gentle
+     filter looks almost clear, so swap the glass surfaces up to the original
+     strong refraction (blur 3px to match the pre-tame look). The `.webkit`
+     class is set in JS by a UA test — a CSS @supports query can't reliably
+     isolate Safari (the -webkit-named-image hack fails in current Safari),
+     and Blink-vs-WebKit isn't otherwise detectable in CSS. */
+  html.webkit nav .logo, html.webkit nav .links, html.webkit .btn.ghost {
+    -webkit-backdrop-filter: blur(3px) saturate(1.6) url("#liquid-glass-strong");
+    backdrop-filter: blur(3px) saturate(1.6) url("#liquid-glass-strong");
   }
   .btn:active { transform: scale(.96); }
 
@@ -1023,9 +1023,9 @@
        #liquid-glass        — gentle (scale 6); the default for everyone,
                               tuned so Chrome reads as a shimmer not waves.
        #liquid-glass-strong — the original strong refraction (scale 40);
-                              Safari applies url() so softly that the gentle
-                              one looks almost clear there, so a WebKit-only
-                              @supports block swaps Safari up to this one.
+                              WebKit applies url() so softly that the gentle
+                              one looks almost clear there, so `html.webkit`
+                              (set in JS by a UA test) swaps it up to this one.
      Engines without backdrop url() support just show blur + bevel. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
@@ -1196,6 +1196,14 @@
 
 <script>
 (() => {
+  /* WebKit (Safari + all iOS browsers) renders url() on backdrop-filter far
+     more softly than Blink, so it needs the stronger #liquid-glass-strong
+     refraction (Chrome gets the gentle default). CSS can't reliably tell the
+     two engines apart, so flag it here: AppleWebKit but not Chrome/Chromium. */
+  if (/AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium/.test(navigator.userAgent)) {
+    document.documentElement.classList.add('webkit');
+  }
+
   const lerp = (a, b, t) => a + (b - a) * t;
   const rand = a => a[Math.floor(Math.random() * a.length)];
   const rr = (min, max) => min + Math.random() * (max - min);
