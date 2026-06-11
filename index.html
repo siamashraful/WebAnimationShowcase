@@ -1614,16 +1614,20 @@
     else if (performance.now() - hintStill > 600) hint.classList.remove('hide');
 
     // endless marquee belt — cruise, drag momentum, seamless modulo wrap.
-    // Time-based advance + translate3d (GPU layer with subpixel sampling)
-    // keep low speeds glassy instead of snapping to whole pixels.
-    // Skipped offscreen — an unseen belt doesn't need to move.
+    // Time-based advance; the translate snaps to the DEVICE-pixel grid
+    // (round(x*dpr)/dpr) before it's written. On the GPU layer a fractional
+    // offset bilinearly resamples the thin -webkit-text-stroke words into a
+    // doubled ghost (worst at Retina); snapping to whole device pixels keeps
+    // the outlines crisp while staying smooth enough at high DPR. Skipped
+    // offscreen — an unseen belt doesn't need to move.
     if (onScreen.get(marquee)) {
       if (!marqDrag) {
         marqVel = lerp(marqVel, marqSpeed, .05);
         marqX += marqVel * dtf;
       }
       if (period) marqX = ((marqX % period) + period) % period - period;
-      track.style.transform = `translate3d(${marqX}px, 0, 0)`;
+      const dpr = window.devicePixelRatio || 1;
+      track.style.transform = `translate3d(${Math.round(marqX * dpr) / dpr}px, 0, 0)`;
     }
 
     // typographic parallax — scroll pans the rows horizontally, each at its
