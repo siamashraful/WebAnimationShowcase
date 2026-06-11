@@ -362,6 +362,16 @@
     transform: scale(1.06);
     background: color-mix(in srgb, var(--paper) 24%, transparent);
   }
+  /* Safari only: WebKit applies url() on backdrop-filter so softly that the
+     gentle filter looks almost clear, so swap the glass surfaces up to the
+     stronger refraction. -webkit-named-image is a WebKit-exclusive feature,
+     so Chrome/Firefox skip this block and keep the gentle default. */
+  @supports (background: -webkit-named-image(i)) {
+    nav .logo, nav .links, .btn.ghost {
+      -webkit-backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass-strong");
+      backdrop-filter: blur(6px) saturate(1.6) url("#liquid-glass-strong");
+    }
+  }
   .btn:active { transform: scale(.96); }
 
   /* ───────── marquee ───────── */
@@ -1008,16 +1018,26 @@
 <body>
 
 <!-- liquid-glass refraction: turbulence → displacement, referenced by the
-     glass backdrop-filters. Kept deliberately gentle (small scale, fine
-     noise) so it's a faint shimmer, not waves — Chrome renders url() on
-     backdrop-filter more aggressively than Safari, so it's tuned to stay
-     subtle there; engines without support just show blur + bevel. -->
+     glass backdrop-filters. Two strengths, because Blink and WebKit render
+     url() on backdrop-filter very differently:
+       #liquid-glass        — gentle (scale 6); the default for everyone,
+                              tuned so Chrome reads as a shimmer not waves.
+       #liquid-glass-strong — the original strong refraction (scale 40);
+                              Safari applies url() so softly that the gentle
+                              one looks almost clear there, so a WebKit-only
+                              @supports block swaps Safari up to this one.
+     Engines without backdrop url() support just show blur + bevel. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <filter id="liquid-glass" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
       <feTurbulence type="fractalNoise" baseFrequency="0.02 0.02" numOctaves="1" seed="7" result="noise"/>
       <feGaussianBlur in="noise" stdDeviation="1.4" result="blurred"/>
       <feDisplacementMap in="SourceGraphic" in2="blurred" scale="6" xChannelSelector="R" yChannelSelector="B"/>
+    </filter>
+    <filter id="liquid-glass-strong" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.012" numOctaves="2" seed="7" result="noise"/>
+      <feGaussianBlur in="noise" stdDeviation="2" result="blurred"/>
+      <feDisplacementMap in="SourceGraphic" in2="blurred" scale="40" xChannelSelector="R" yChannelSelector="B"/>
     </filter>
   </defs>
 </svg>
