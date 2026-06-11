@@ -44,6 +44,12 @@
     /* die pip radius — the cube-face --pips gradients and the pip the orb
        morphs into (2× this) both derive from it so they stay in sync */
     --pip-r: 6px;
+    /* die corner radius, shared by the morph square and the cube faces so
+       the square→cube swap is seamless. Keep it SMALL: at a cube corner
+       three rounded face-corners curve apart and open a hole that grows as
+       r·(1−1/√2) per face — at 8px the notch is ~2px and the faces' 1px
+       overlap (translateZ 30, not 31) backs it with the neighbour's surface */
+    --die-r: 8px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -930,7 +936,7 @@
   .remix-btn.morphing {
     padding: 0; gap: 0;
     justify-content: center;
-    border-radius: 17px;
+    border-radius: var(--die-r);   /* same corner as the cube faces — no radius pop at the swap */
     /* the size morph must NOT ride --spring: its overshoot drops width below
        the 62px target (coming from ~3× that) while height, already ≈62,
        barely moves — so the "square" reads as a tall rectangle for a beat.
@@ -964,7 +970,7 @@
     position: absolute; inset: 0;
     /* pips drawn as gradients — always dead-center, unlike dice glyphs */
     background-image: var(--pips), linear-gradient(135deg, var(--frost-1), var(--frost-2));
-    border-radius: 14px;
+    border-radius: var(--die-r);
     border: 1px solid rgba(255,255,255,.35);
     /* frosted like the pill: --frost tint + specular rim. No backdrop-filter
        here — blur sampling inside a preserve-3d scene is non-interop
@@ -975,27 +981,27 @@
        ghost through the front as faint dots while the die tumbles */
     backface-visibility: hidden;
   }
-  .face.f1 { transform: rotateY(0deg)   translateZ(31px);
+  .face.f1 { transform: rotateY(0deg)   translateZ(30px);
     --pips: radial-gradient(circle var(--pip-r) at 50% 50%, #fff 0 88%, transparent 100%); }
-  .face.f2 { transform: rotateY(90deg)  translateZ(31px);
+  .face.f2 { transform: rotateY(90deg)  translateZ(30px);
     --pips: radial-gradient(circle var(--pip-r) at 66% 34%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 34% 66%, #fff 0 88%, transparent 100%); }
-  .face.f3 { transform: rotateY(180deg) translateZ(31px);
+  .face.f3 { transform: rotateY(180deg) translateZ(30px);
     --pips: radial-gradient(circle var(--pip-r) at 28% 28%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 50% 50%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 72% 72%, #fff 0 88%, transparent 100%); }
-  .face.f4 { transform: rotateY(-90deg) translateZ(31px);
+  .face.f4 { transform: rotateY(-90deg) translateZ(30px);
     --pips: radial-gradient(circle var(--pip-r) at 32% 32%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 68% 32%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 32% 68%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 68% 68%, #fff 0 88%, transparent 100%); }
-  .face.f5 { transform: rotateX(90deg)  translateZ(31px);
+  .face.f5 { transform: rotateX(90deg)  translateZ(30px);
     --pips: radial-gradient(circle var(--pip-r) at 32% 32%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 68% 32%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 50% 50%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 32% 68%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 68% 68%, #fff 0 88%, transparent 100%); }
-  .face.f6 { transform: rotateX(-90deg) translateZ(31px);
+  .face.f6 { transform: rotateX(-90deg) translateZ(30px);
     --pips: radial-gradient(circle var(--pip-r) at 34% 27%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 34% 50%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 34% 73%, #fff 0 88%, transparent 100%),
