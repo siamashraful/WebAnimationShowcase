@@ -16,6 +16,22 @@
     --radius: 20px;
     --spring: cubic-bezier(.22, 1.4, .36, 1);
     --ease-out: cubic-bezier(.16, 1, .3, 1);
+    /* liquid-glass lens rims, ported from the shadcn LiquidButton shadow
+       stacks: -dark (black insets) reads as clear glass over light content;
+       -light (white specular insets) reads as frosted glass on tinted/dark
+       material. Both: sharp 4-edge rim + inner vignette + faint outer halo. */
+    --glass-rim-dark:
+      0 0 6px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08),
+      inset 3px 3px .5px -3px rgba(0,0,0,.9), inset -3px -3px .5px -3px rgba(0,0,0,.85),
+      inset 1px 1px 1px -.5px rgba(0,0,0,.6), inset -1px -1px 1px -.5px rgba(0,0,0,.6),
+      inset 0 0 6px 6px rgba(0,0,0,.12), inset 0 0 2px 2px rgba(0,0,0,.06),
+      0 0 12px rgba(255,255,255,.15);
+    --glass-rim-light:
+      0 0 8px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08),
+      inset 3px 3px .5px -3.5px rgba(255,255,255,.09), inset -3px -3px .5px -3.5px rgba(255,255,255,.85),
+      inset 1px 1px 1px -.5px rgba(255,255,255,.6), inset -1px -1px 1px -.5px rgba(255,255,255,.6),
+      inset 0 0 6px 6px rgba(255,255,255,.12), inset 0 0 2px 2px rgba(255,255,255,.06),
+      0 0 12px rgba(0,0,0,.15);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -98,16 +114,7 @@
     backdrop-filter: blur(3px) saturate(1.6) url("#liquid-glass");
     -webkit-backdrop-filter: blur(3px) saturate(1.6);
     border-radius: 100px;
-    box-shadow:
-      0 0 6px rgba(0,0,0,.03),
-      0 2px 6px rgba(0,0,0,.08),
-      inset 3px 3px .5px -3px rgba(0,0,0,.9),       /* sharp top-left rim */
-      inset -3px -3px .5px -3px rgba(0,0,0,.85),     /* sharp bottom-right rim */
-      inset 1px 1px 1px -.5px rgba(0,0,0,.6),
-      inset -1px -1px 1px -.5px rgba(0,0,0,.6),
-      inset 0 0 6px 6px rgba(0,0,0,.12),             /* inner vignette = lens depth */
-      inset 0 0 2px 2px rgba(0,0,0,.06),
-      0 0 12px rgba(255,255,255,.15);                /* faint outer halo */
+    box-shadow: var(--glass-rim-dark);             /* clear-glass lens bevel */
     transition: background .4s ease,
                 transform .55s var(--spring),
                 border-radius .4s ease;
@@ -330,20 +337,31 @@
                 background .3s ease, color .3s ease;
     will-change: transform;
   }
+  /* tinted button → FROSTED liquid glass: a translucent, blurred slab of its
+     own colour with the specular (white-inset) lens rim. The frost lets the
+     page haze through while ink/white text stays legible. */
   .btn.primary {
-    background: var(--ink); color: #fff;
-    box-shadow: 0 4px 14px rgba(14,14,16,.18);
+    background: color-mix(in srgb, var(--ink) 90%, transparent); color: #fff;
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
+    box-shadow: var(--glass-rim-light);
   }
   .btn.primary:hover {
     transform: scale(1.06);
-    box-shadow: 0 14px 34px rgba(79,70,229,.35);
-    background: var(--accent);
+    background: color-mix(in srgb, var(--accent) 90%, transparent);
   }
+  /* non-tinted button → REGULAR clear liquid glass, same recipe as the nav
+     pills: near-clear material, refracting backdrop, dark-inset lens bevel */
   .btn.ghost {
-    background: transparent; color: var(--ink);
-    box-shadow: inset 0 0 0 1.5px var(--ink);
+    background: color-mix(in srgb, var(--paper) 10%, transparent); color: var(--ink);
+    -webkit-backdrop-filter: blur(3px) saturate(1.6);
+    backdrop-filter: blur(3px) saturate(1.6) url("#liquid-glass");
+    box-shadow: var(--glass-rim-dark);
   }
-  .btn.ghost:hover { transform: scale(1.06); background: var(--ink); color: #fff; }
+  .btn.ghost:hover {
+    transform: scale(1.06);
+    background: color-mix(in srgb, var(--paper) 24%, transparent);
+  }
   .btn:active { transform: scale(.96); }
 
   /* ───────── marquee ───────── */
@@ -755,9 +773,16 @@
     padding: 19px 34px; border-radius: 100px;
     border: none; cursor: none;
     font: 700 17px "Segoe UI", system-ui, sans-serif;
-    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    /* tinted → FROSTED liquid glass: translucent gradient + blur + specular
+       lens rim, over the existing float shadow. The morph state resets to a
+       solid gradient, so the dice animation is unaffected. */
+    background: linear-gradient(120deg,
+      color-mix(in srgb, var(--accent) 90%, transparent),
+      color-mix(in srgb, var(--accent-2) 90%, transparent));
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    backdrop-filter: blur(16px) saturate(1.5);
     color: #fff;
-    box-shadow: 0 12px 36px rgba(14,14,16,.3);
+    box-shadow: var(--glass-rim-light), 0 12px 36px rgba(14,14,16,.3);
     transition: transform .45s var(--spring), box-shadow .45s var(--spring),
                 width .5s var(--spring), height .5s var(--spring),
                 border-radius .5s var(--spring), padding .5s var(--spring),
