@@ -62,8 +62,13 @@
 
   /* ───────── scroll progress bar ───────── */
   .progress {
-    position: fixed; top: 0; left: 0; height: 4px; width: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
+    position: fixed; top: 0; left: 0; height: 5px; width: 100%;
+    /* full three-stop gradient, but the pale third stop is pulled halfway
+       into the mid tone so it no longer washes out on the near-white paper.
+       a faint shadow gives the bar an edge against it. */
+    background: linear-gradient(90deg, var(--accent), var(--accent-2),
+                color-mix(in srgb, var(--accent-3), var(--accent-2) 55%));
+    box-shadow: 0 1px 3px rgba(14, 14, 16, .22);
     transform-origin: 0 50%;
     transform: scaleX(0);
     z-index: 1000;
@@ -80,22 +85,29 @@
     transition: padding .4s var(--ease-out);
   }
   nav.scrolled { padding: 10px 20px; }
-  /* liquid glass, iOS-26 style: a nearly clear material — no surface
-     tints or sheens. The glassiness comes from the heavily blurred,
-     oversaturated backdrop showing through, plus light catching the rim:
-     a hairline all round, brightest where light enters (top-left),
-     dimmer where it exits (bottom-right). */
+  /* liquid glass: a nearly clear material that REFRACTS the page behind it.
+     The warp comes from an SVG turbulence→displacement filter referenced on
+     backdrop-filter (#liquid-glass, defined inline in the markup); the lens
+     bevel comes from a stack of tight inset shadows — sharp dark rims at the
+     four edges plus a soft inner vignette — and a faint outer white halo.
+     Ported from a shadcn LiquidButton into vanilla CSS. */
   nav .logo, nav .links {
     pointer-events: auto;
     position: relative;
-    background: color-mix(in srgb, var(--paper) 14%, transparent);
-    backdrop-filter: blur(24px) saturate(1.9);
-    -webkit-backdrop-filter: blur(24px) saturate(1.9);
+    background: color-mix(in srgb, var(--paper) 10%, transparent);
+    backdrop-filter: blur(3px) saturate(1.6) url("#liquid-glass");
+    -webkit-backdrop-filter: blur(3px) saturate(1.6);
     border-radius: 100px;
-    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.35),            /* hairline rim */
-                inset 1.5px 1.5px 1px -1px rgba(255,255,255,.85),  /* light entry */
-                inset -1.5px -1.5px 1px -1px rgba(255,255,255,.45),/* light exit */
-                0 8px 24px rgba(14,14,16,.12);
+    box-shadow:
+      0 0 6px rgba(0,0,0,.03),
+      0 2px 6px rgba(0,0,0,.08),
+      inset 3px 3px .5px -3px rgba(0,0,0,.9),       /* sharp top-left rim */
+      inset -3px -3px .5px -3px rgba(0,0,0,.85),     /* sharp bottom-right rim */
+      inset 1px 1px 1px -.5px rgba(0,0,0,.6),
+      inset -1px -1px 1px -.5px rgba(0,0,0,.6),
+      inset 0 0 6px 6px rgba(0,0,0,.12),             /* inner vignette = lens depth */
+      inset 0 0 2px 2px rgba(0,0,0,.06),
+      0 0 12px rgba(255,255,255,.15);                /* faint outer halo */
     transition: background .4s ease,
                 transform .55s var(--spring),
                 border-radius .4s ease;
@@ -969,6 +981,18 @@
 </style>
 </head>
 <body>
+
+<!-- liquid-glass refraction filter: turbulence → displacement, referenced by
+     the nav pills' backdrop-filter. Ported from the shadcn LiquidButton. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="liquid-glass" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.012" numOctaves="2" seed="7" result="noise"/>
+      <feGaussianBlur in="noise" stdDeviation="2" result="blurred"/>
+      <feDisplacementMap in="SourceGraphic" in2="blurred" scale="40" xChannelSelector="R" yChannelSelector="B"/>
+    </filter>
+  </defs>
+</svg>
 
 <div class="cursor-ring"></div>
 <div class="cursor-dot"></div>
