@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Motion Studio — Framer-style Animations</title>
+<title>Motion Studio — hand-built motion by Siam Ashraful</title>
+<meta name="description" content="A single-file, zero-dependency animation showcase by Siam Ashraful — spring physics, scroll choreography, 3D parallax and a remixable theme system, all hand-rolled.">
 <style>
   :root {
     color-scheme: light;
@@ -957,9 +958,20 @@
     font-size: clamp(36px, 6vw, 76px);
     font-weight: 800; letter-spacing: -.03em; margin-bottom: 36px;
   }
+  footer .cta-row {
+    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+  }
   footer .fineprint {
     margin-top: 80px; color: var(--grey); font-size: 13px;
   }
+  /* the author credit inherits the fineprint grey so it reads as one line;
+     the underline (not color) carries the affordance at this size */
+  footer .fineprint a {
+    color: inherit;
+    text-decoration: underline; text-underline-offset: 3px;
+    transition: color .3s ease;
+  }
+  footer .fineprint a:hover { color: var(--accent); }
 
   /* ───────── remix button ───────── */
   .remix-btn {
@@ -1395,10 +1407,10 @@
   }
   @media (max-width: 440px) {
     nav { padding: 10px; }
-    nav .logo { font-size: 14px; padding: 10px 14px; }
+    nav .logo { font-size: 14px; padding: 10px 12px; }
     nav .logo .logo-tld { display: none; }   /* "motion" carries the brand alone */
     nav .links { font-size: 12px; padding: 5px 6px; }
-    nav .links a { padding: 6px 7px; }
+    nav .links a { padding: 6px 6px; }
     .nite { --nite-w: 40px; margin-left: 4px; }
     .hero h1 { font-size: clamp(40px, 13.5vw, 52px); }
     h2.title { font-size: clamp(27px, 8.5vw, 34px); }
@@ -1422,8 +1434,8 @@
 <nav>
   <div class="logo">motion<span class="logo-tld">.studio</span></div>
   <div class="links">
-    <a href="#work" data-hover>Work</a>
-    <a href="#about" data-hover>About</a>
+    <a href="#work" data-hover>Effects</a>
+    <a href="#about" data-hover>Depth</a>
     <a href="#stats" data-hover>Stats</a>
     <a href="#contact" data-hover>Contact</a>
     <button class="nite" id="niteToggle" role="switch" aria-checked="false" aria-label="Night mode" data-hover><span class="knob" aria-hidden="true"></span></button>
@@ -1542,9 +1554,12 @@
 <!-- FOOTER CTA -->
 <footer id="contact">
   <div class="eyebrow reveal">The end — almost</div>
-  <h2 class="reveal zoom"><a class="mega-link magnetic" href="#" data-hover>Let's build something →</a></h2>
-  <a class="btn primary magnetic reveal" href="#" data-hover>Start a project</a>
-  <div class="fineprint">Single-file demo · CSS springs + IntersectionObserver + rAF · no dependencies</div>
+  <h2 class="reveal zoom"><a class="mega-link magnetic" href="mailto:siamashraful.work@gmail.com?subject=Let%27s%20build%20something" data-hover>Let's build something →</a></h2>
+  <div class="cta-row reveal">
+    <a class="btn primary magnetic" href="mailto:siamashraful.work@gmail.com?subject=Start%20a%20project" data-hover>Start a project</a>
+    <a class="btn ghost magnetic" href="https://github.com/siamashraful/WebAnimationShowcase" target="_blank" rel="noopener" data-hover>Read the source</a>
+  </div>
+  <div class="fineprint">Hand-built by <a href="https://github.com/siamashraful" target="_blank" rel="noopener" data-hover>Siam Ashraful</a> · one file, zero dependencies · CSS springs + IntersectionObserver + rAF</div>
 </footer>
 
 <div class="wipe" id="wipe"></div>
