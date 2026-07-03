@@ -104,7 +104,10 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  html { scroll-behavior: smooth; }
+  /* overflow-x on the ROOT, not just body: pre-reveal transforms (the
+     from-right card at 72px) poke past narrow viewports, and body's own
+     overflow-x:hidden doesn't stop mobile browsers panning the html box */
+  html { scroll-behavior: smooth; overflow-x: clip; }
 
   body {
     font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -1393,7 +1396,8 @@
     nav .links a { padding: 6px 10px; }
     .hero p { font-size: 16px; }
     section.block { padding: 90px 22px; }
-    footer { padding: 90px 22px 48px; }
+    /* extra bottom room so the fixed remix orb can't sit on the fineprint */
+    footer { padding: 90px 22px 110px; }
     .parallax-band { padding: 80px 22px; min-height: 70vh; }
     .marquee { padding: 28px 0; }
     .marquee span { font-size: 26px; margin: 0 26px; }
@@ -1422,6 +1426,32 @@
     .btn { padding: 14px 26px; font-size: 14px; }
     .marquee span { font-size: 22px; margin: 0 20px; }
     .remix-btn { padding: 12px 26px; font-size: 15px; }
+  }
+
+  /* ───────── reduced motion ─────────
+     A real mode, not the blanket 0.01ms sledgehammer — three rules:
+     1. Entrance animations GATE VISIBILITY (start at opacity 0), so they
+        must be forced to their end state, never just switched off.
+     2. Reveals keep a gentle opacity crossfade (allowed under reduce);
+        every transform variant is stripped.
+     3. Ambient loops (pulse, bob, orb swirl, shine, ping, holo) go silent.
+     The rAF-driven motion (aurora, marquee, parallax, glitch, remix
+     choreography, tilt/magnetism) is JS and can't be reached from here —
+     the script gates all of it behind the same media query (REDUCE). */
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .hero h1 .word { transform: none; animation: none; }
+    .hero p, .hero .cta-row { opacity: 1; transform: none; animation: none; }
+    .reveal,
+    .reveal.from-left, .reveal.from-right, .reveal.zoom, .reveal.flip,
+    .stagger > * { transform: none; transition-property: opacity; }
+    .hero h1 .line:last-child::after,
+    .scroll-hint, .scroll-hint .chevrons span,
+    .remix-btn .orb, .remix-btn .orb::before, .remix-btn .orb::after,
+    .remix-btn::before, .remix-btn::after,
+    .remix-tip strong, .remix-tip .holo, .remix-tip .holo::after { animation: none; }
+    .parallax-band.glitching .type-layer::before,
+    .parallax-band.glitching .type-layer::after { animation: none; opacity: 0; }
   }
 </style>
 </head>
@@ -1596,6 +1626,12 @@
      effects, reveals and remix; only the hover-tracking physics sit out. */
   const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
 
+  /* reduced motion, honored by the ENGINE, not just the stylesheet: the
+     aurora, marquee, parallax rows, glitch, remix choreography and the
+     hover physics are all rAF/JS-driven, so the CSS media query alone
+     can't quiet them. Checked once at load, same as FINE. */
+  const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   /* ── custom cursor with trailing ring ── */
   const dot = document.querySelector('.cursor-dot');
   const ring = document.querySelector('.cursor-ring');
@@ -1614,7 +1650,7 @@
   const magnets = [...document.querySelectorAll('.magnetic')].map(el => ({ el, x: 0, y: 0, tx: 0, ty: 0, wt: '' }));
   magnets.forEach(m => {
     m.peers = magnets.filter(o => o !== m && o.el.parentElement === m.el.parentElement);
-    if (!FINE) return;   // the array (and its rAF spring) stays — targets just never move
+    if (!FINE || REDUCE) return;   // the array (and its rAF spring) stays — targets just never move
     m.el.addEventListener('pointermove', e => {
       if (m.el.classList.contains('morphing')) return;   // no magnetism while the die spins
       const r = m.el.getBoundingClientRect();
@@ -1627,7 +1663,7 @@
   /* ── 3D tilt cards + pointer glow ──
      While tracking, use a near-instant transition so the tilt sticks to the
      cursor; restore the long CSS spring only for the snap-back on leave. */
-  if (FINE) document.querySelectorAll('.tilt').forEach(card => {
+  if (FINE && !REDUCE) document.querySelectorAll('.tilt').forEach(card => {
     card.addEventListener('pointerenter', () => {
       card.style.transition = 'transform .12s ease-out, box-shadow .5s var(--spring)';
     });
@@ -1818,6 +1854,11 @@
     (c >= '0' && c <= '9') ? SCRAMBLE_DIGITS : SCRAMBLE_SYMBOLS;
   const scrambleAt = (c, n) => { const s = scrambleSet(c); return s[n % s.length]; };
   function scrambleIn(el) {
+    // reduced motion: the heading simply is; its counters land settled too
+    if (REDUCE) {
+      el.closest('section')?.querySelectorAll('.num[data-count]').forEach(n => runCounter(n));
+      return;
+    }
     const full = el.dataset.full || (el.dataset.full = el.textContent);
     const gen = el._gen = (el._gen || 0) + 1;
     el._scrambling = true;
@@ -1904,6 +1945,7 @@
      compensation needed. */
   function runCounter(el, settleMs = 1600) {
     if (el._counted) return;
+    if (REDUCE) settleMs = 1;   // numbers appear settled, no count-up
     el._counted = true;
     counterIO.unobserve(el);
     const target = +el.dataset.count, suffix = el.dataset.suffix || '';
@@ -2011,14 +2053,18 @@
     // canvas is the loop's one whole-surface repaint, which is why it
     // renders at 1/3 resolution; everything else here is arithmetic (no
     // layout reads — vw/vh/aurW/aurH all come from measure()).
-    if (onScreen.get(hero)) {
-      aurora.t += dtf / 60;
-      // cursor energy: swirling the mouse feeds churn that decays at rest
-      const mvx = rx - aurora.px, mvy = ry - aurora.py;
-      aurora.px = rx; aurora.py = ry;
-      aurora.energy = Math.min(1,
-        aurora.energy * Math.pow(.95, dtf) + Math.hypot(mvx, mvy) * .0015 * dtf);
-      const cxn = rx / vw, cyn = ry / vh, t = aurora.t;
+    // reduced motion: the sky is a still — painted once (aurDirty), and
+    // again only when resize/remix invalidates it; no drift, no cursor
+    if (onScreen.get(hero) && (!REDUCE || aurDirty)) {
+      if (!REDUCE) {
+        aurora.t += dtf / 60;
+        // cursor energy: swirling the mouse feeds churn that decays at rest
+        const mvx = rx - aurora.px, mvy = ry - aurora.py;
+        aurora.px = rx; aurora.py = ry;
+        aurora.energy = Math.min(1,
+          aurora.energy * Math.pow(.95, dtf) + Math.hypot(mvx, mvy) * .0015 * dtf);
+      }
+      const cxn = REDUCE ? .5 : rx / vw, cyn = REDUCE ? .5 : ry / vh, t = aurora.t;
       aurCtx.clearRect(0, 0, aurW, aurH);
       aurCtx.globalCompositeOperation = 'lighter';
       const step = Math.max(4, aurW / 150 | 0);
@@ -2043,6 +2089,7 @@
       }
       aurCtx.globalCompositeOperation = 'source-over';
       aurCtx.globalAlpha = 1;
+      aurDirty = false;
     }
 
     // magnet card: title letters orbit the cursor ring and chase it
@@ -2118,7 +2165,13 @@
     vel = lerp(vel, scrollY - lastY, 0.12);
     lastY = scrollY;
 
-    if (onScreen.get(band)) {
+    if (onScreen.get(band) && REDUCE) {
+      // rows hold still, centred; no scroll-pan, no shear, no glitch
+      layers.forEach(l => {
+        const t = 'translateX(-50%)';
+        if (t !== l.wx) { l.style.transform = t; l.wx = t; }
+      });
+    } else if (onScreen.get(band)) {
       const center = bandTop - scrollY + bandH / 2 - vh / 2;
       const pxn = rx / vw - .5;   // lerped cursor → smooth drift
       // glitch shear: while the band moves, each row shears with scroll
@@ -2154,7 +2207,9 @@
   track.innerHTML += track.innerHTML;   // 4×
   let marqCopies = 4;   // measure() doubles this while the viewport outgrows the belt (zoom-out)
   const marquee = track.parentElement;
-  let marqX = 0, marqSpeed = -1.1, marqVel = -1.1, marqDrag = null;
+  // reduced motion: the belt doesn't cruise on its own, but dragging,
+  // flinging and wheel-scrubbing stay live — user-initiated is fine
+  let marqX = 0, marqSpeed = REDUCE ? 0 : -1.1, marqVel = 0, marqDrag = null;
 
   marquee.addEventListener('pointerdown', e => {
     marqDrag = { startX: e.clientX, base: marqX, lastX: e.clientX, lastT: performance.now() };
@@ -2190,6 +2245,7 @@
   const aurCtx = aurCv.getContext('2d');
   const AUR_SCALE = 3;                       // internal px = CSS px / 3
   let aurW = 0, aurH = 0;
+  let aurDirty = true;   // reduced motion repaints only when this flips (resize/remix)
   const aurora = { t: 0, energy: 0, px: 0, py: 0, sway: [0, 0, 0], curtains: [], grads: [] };
   const hexRGB = h => {
     h = h.trim().slice(1);
@@ -2237,6 +2293,7 @@
       sway: rr(.05, .14) * (i + 1),                      // cursor parallax depth
     }));
     auroraGrads(cols);
+    aurDirty = true;
   }
   {
     const cs = getComputedStyle(document.documentElement);
@@ -2278,6 +2335,7 @@
     // back up; assigning width/height also clears it — next frame repaints)
     aurW = aurCv.width = Math.ceil(hero.offsetWidth / AUR_SCALE);
     aurH = aurCv.height = Math.ceil(hero.offsetHeight / AUR_SCALE);
+    aurDirty = true;   // sizing cleared the canvas — the still needs repainting
     // DEPTH rows: each row slides ±speed·(bandH+vh)/2 with scroll plus
     // ±speed·110 cursor drift, so tile its word until it still covers the
     // viewport at both extremes — too few copies uncovers bare band at the
@@ -2366,8 +2424,8 @@
     // heights, wave shapes/speeds, shimmer and cursor-parallax depths
     auroraRoll(pal);
 
-    // marquee speed + direction
-    marqSpeed = (Math.random() < .5 ? -1 : 1) * rr(.6, 2.2);
+    // marquee speed + direction (stays parked under reduced motion)
+    if (!REDUCE) marqSpeed = (Math.random() < .5 ? -1 : 1) * rr(.6, 2.2);
 
     // remix-orb rhythm — swirl periods from disjoint ranges (a < 5.2 < 5.8 ≤ b)
     // so the two blobs can never lock into sync, plus a fresh breathe
@@ -2390,8 +2448,9 @@
       io.unobserve(el); io.observe(el);
     });
 
-    // replay hero headline with fresh timing
-    words.forEach((w, i) => {
+    // replay hero headline with fresh timing (skipped under reduced motion —
+    // this writes an INLINE animation, which would beat the CSS reduce rule)
+    if (!REDUCE) words.forEach((w, i) => {
       w.style.animation = 'none';
       void w.offsetWidth;   // reflow so the keyframes restart
       w.style.animation = `word-in ${rr(.6, 1.4).toFixed(2)}s ${spring} ${(i * rr(.06, .22)).toFixed(2)}s forwards`;
@@ -2465,9 +2524,28 @@
     if (wiping) return;
     wiping = true;
     clearTimeout(tipTimer); tip.classList.remove('show');
-    morphToDie();
 
     const pal = rand(palettes);
+
+    // reduced motion: the full-screen radial burst is the page's biggest
+    // vestibular trigger — swap the whole choreography (morph, confetti,
+    // wipe) for a quiet crossfade cover while the restyle happens under it
+    if (REDUCE) {
+      wipe.getAnimations().forEach(a => a.cancel());
+      wipe.style.background = `linear-gradient(120deg, ${pal[0]}, ${pal[1]}, ${pal[2]})`;
+      wipe.animate([{ opacity: 0 }, { opacity: 1 }],
+        { duration: 220, easing: 'ease', fill: 'forwards' })
+        .onfinish = () => {
+          remix(pal);
+          wipe.animate([{ opacity: 1 }, { opacity: 0 }],
+            { duration: 320, easing: 'ease', fill: 'forwards' })
+            .onfinish = () => { wiping = false; };
+        };
+      return;
+    }
+
+    morphToDie();
+
     const r = remixBtn.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
 
