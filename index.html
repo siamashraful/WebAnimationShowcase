@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Motion Studio — Framer-style Animations</title>
 <style>
   :root {
@@ -308,6 +308,7 @@
   /* ───────── hero ───────── */
   .hero {
     min-height: 100vh;
+    min-height: 100svh;   /* mobile: ignore the URL-bar collapse (vh jumps) */
     display: flex; flex-direction: column;
     justify-content: center; align-items: center;
     text-align: center;
@@ -421,6 +422,7 @@
   }
   .hero .cta-row {
     display: flex; gap: 16px; margin-top: 40px;
+    flex-wrap: wrap; justify-content: center;   /* stack, centred, when they can't sit side by side */
     opacity: 0; transform: translateY(24px);
     animation: fade-up .9s var(--ease-out) .7s forwards;
   }
@@ -615,7 +617,9 @@
   /* ───────── cards (3D tilt) ───────── */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    /* min(280px, 100%): a plain 280px floor overflows viewports narrower
+       than track + gutters (deep zoom) — this lets the track give way */
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
     gap: 28px; margin-top: 56px;
   }
   .card {
@@ -932,7 +936,7 @@
   /* ───────── animated counters ───────── */
   .stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
     gap: 40px; margin-top: 64px; text-align: center;
   }
   .stat .num {
@@ -1352,6 +1356,61 @@
     transition: letter-spacing .5s var(--spring), color .3s ease;
   }
   .mega-link:hover { letter-spacing: .04em; color: var(--accent); }
+
+  /* ───────── responsive (mobile ↔ desktop, and every zoom level) ─────────
+     Width breakpoints, not device detection: browser zoom shrinks the
+     effective viewport, so the rules that fit a phone are the same ones
+     that fix a 200% desktop zoom. clamp() type already scales itself —
+     these re-tune the fixed-px chrome (nav pills, gutters, grids) that
+     can't shrink on its own. */
+  @media (max-width: 900px) {
+    section.block { padding: 110px 32px; }
+    footer { padding: 110px 32px 56px; }
+    .parallax-band { padding: 90px 32px; }
+  }
+  @media (max-width: 720px) {
+    /* the merged bar physically can't fit — logo + links outgrow the
+       viewport, so the merge transforms would overlap the pills. Hold the
+       split layout in BOTH states (the scrolled state is already split). */
+    nav { padding: 10px 12px; }
+    nav.scrolled { padding: 8px 10px; }
+    nav:not(.scrolled) .logo,
+    nav:not(.scrolled) .links { transform: none; border-radius: 100px; }
+    nav .logo { font-size: 15px; padding: 10px 16px; display: flex; align-items: center; }
+    nav .links { font-size: 13px; padding: 6px 8px; }
+    nav .links a { padding: 6px 10px; }
+    .hero p { font-size: 16px; }
+    section.block { padding: 90px 22px; }
+    footer { padding: 90px 22px 48px; }
+    .parallax-band { padding: 80px 22px; min-height: 70vh; }
+    .marquee { padding: 28px 0; }
+    .marquee span { font-size: 26px; margin: 0 26px; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 16px; }
+    .grid { gap: 20px; }
+    .remix-btn { right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+    .remix-tip {
+      right: 16px; bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+      max-width: min(260px, calc(100vw - 32px));
+    }
+  }
+  @media (max-width: 440px) {
+    nav { padding: 10px; }
+    nav .logo { font-size: 14px; padding: 10px 14px; }
+    nav .logo .logo-tld { display: none; }   /* "motion" carries the brand alone */
+    nav .links { font-size: 12px; padding: 5px 6px; }
+    nav .links a { padding: 6px 7px; }
+    .nite { --nite-w: 40px; margin-left: 4px; }
+    .hero h1 { font-size: clamp(40px, 13.5vw, 52px); }
+    h2.title { font-size: clamp(27px, 8.5vw, 34px); }
+    .parallax-band h2 { font-size: clamp(30px, 10vw, 40px); }
+    footer h2 { font-size: clamp(28px, 9.5vw, 40px); }
+    .type-layer.t-near { font-size: clamp(90px, 26vw, 130px); }
+    .card { padding: 30px 24px; }
+    .stat .num { font-size: clamp(34px, 11vw, 44px); }
+    .btn { padding: 14px 26px; font-size: 14px; }
+    .marquee span { font-size: 22px; margin: 0 20px; }
+    .remix-btn { padding: 12px 26px; font-size: 15px; }
+  }
 </style>
 </head>
 <body>
@@ -1361,7 +1420,7 @@
 <div class="progress" id="progress"></div>
 
 <nav>
-  <div class="logo">motion.studio</div>
+  <div class="logo">motion<span class="logo-tld">.studio</span></div>
   <div class="links">
     <a href="#work" data-hover>Work</a>
     <a href="#about" data-hover>About</a>
@@ -1516,6 +1575,12 @@
   /* live physics config — remix re-rolls these */
   const cfg = { tilt: 14, magnet: 0.32 };
 
+  /* pointer-quality gate: tilt and magnetism read continuous hover position,
+     which touch can't supply — a finger scrolling across a card would fire
+     pointermove and shear the layout mid-scroll. Touch keeps the press
+     effects, reveals and remix; only the hover-tracking physics sit out. */
+  const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
+
   /* ── custom cursor with trailing ring ── */
   const dot = document.querySelector('.cursor-dot');
   const ring = document.querySelector('.cursor-ring');
@@ -1534,6 +1599,7 @@
   const magnets = [...document.querySelectorAll('.magnetic')].map(el => ({ el, x: 0, y: 0, tx: 0, ty: 0, wt: '' }));
   magnets.forEach(m => {
     m.peers = magnets.filter(o => o !== m && o.el.parentElement === m.el.parentElement);
+    if (!FINE) return;   // the array (and its rAF spring) stays — targets just never move
     m.el.addEventListener('pointermove', e => {
       if (m.el.classList.contains('morphing')) return;   // no magnetism while the die spins
       const r = m.el.getBoundingClientRect();
@@ -1546,7 +1612,7 @@
   /* ── 3D tilt cards + pointer glow ──
      While tracking, use a near-instant transition so the tilt sticks to the
      cursor; restore the long CSS spring only for the snap-back on leave. */
-  document.querySelectorAll('.tilt').forEach(card => {
+  if (FINE) document.querySelectorAll('.tilt').forEach(card => {
     card.addEventListener('pointerenter', () => {
       card.style.transition = 'transform .12s ease-out, box-shadow .5s var(--spring)';
     });
@@ -2071,6 +2137,7 @@
   const track = document.getElementById('marqueeTrack');
   track.innerHTML += track.innerHTML;   // 2×
   track.innerHTML += track.innerHTML;   // 4×
+  let marqCopies = 4;   // measure() doubles this while the viewport outgrows the belt (zoom-out)
   const marquee = track.parentElement;
   let marqX = 0, marqSpeed = -1.1, marqVel = -1.1, marqDrag = null;
 
@@ -2174,8 +2241,14 @@
   function measure() {
     docMax = document.documentElement.scrollHeight - innerHeight;
     bandTop = band.offsetTop; bandH = band.offsetHeight;
-    period = track.scrollWidth / 4;   // width of one marquee content copy
     vw = innerWidth; vh = innerHeight;
+    // belt coverage: 4 copies suit a laptop, but zooming OUT can leave the
+    // viewport wider than the whole belt — double the copies until the belt
+    // clears 2× the viewport, so the modulo wrap never exposes a gap
+    while (track.scrollWidth < vw * 2 && marqCopies < 64) {
+      track.innerHTML += track.innerHTML; marqCopies *= 2;
+    }
+    period = track.scrollWidth / marqCopies;   // width of one marquee content copy
     // each nav pill needs its PARTNER's width to centre the merged bar as a
     // unit (its own width comes free as % inside translateX) — measured here
     // so the merge maths stays width-agnostic without per-frame reads

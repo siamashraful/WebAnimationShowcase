@@ -54,6 +54,12 @@ network requests, so `file://` works too.)
   letter scramble — each glyph spins through a reel and locks left-to-right with
   a soft blur/fade focus-in.
 - **Marquee**: endless JS-driven belt — drag it, fling it, wheel-scrub it.
+- **Responsive**: works from a 320px phone to an ultrawide desktop, at any
+  browser zoom. The nav pills un-merge and compact on small viewports, grids
+  reflow, type rides `clamp()`, and the self-sizing bits (DEPTH rows, marquee
+  belt) re-tile themselves to cover whatever viewport they get. Touch drops
+  the hover-only physics (tilt, magnetism, custom cursor) but keeps every
+  press effect, reveal and the remix system.
 
 Everything is driven by CSS custom properties plus one `requestAnimationFrame` loop;
 the inline `<script>` at the bottom of `index.html` is the whole engine.
