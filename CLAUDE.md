@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Design context
+
+Strategic design context lives in [PRODUCT.md](PRODUCT.md) — register (brand), audience (recruiters/peers evaluating craft), personality (playful, precise, alive), anti-references, and the five design principles. Read it before any design-facing change; the impeccable skill's commands read it automatically. There is no DESIGN.md yet (`/impeccable document` generates one).
+
 ## What this is
 
 A single-file animation playground ("Motion Studio") — Framer-style spring physics, scroll choreography, 3D parallax, magnetic buttons, and a remixable theme system. The entire site is `index.html`: a `<style>` block plus one inline IIFE `<script>` at the bottom. Zero dependencies, no build step, no tests, no lint. Live demo: https://siamashraful.github.io/WebAnimationShowcase/
