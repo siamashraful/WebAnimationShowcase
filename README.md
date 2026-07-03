@@ -25,9 +25,10 @@ network requests, so `file://` works too.)
   mouse: curtains sway in parallax, the sky flares around the pointer, and
   swirling the cursor feeds energy that churns the whole thing (it calms when
   you stop). Soft pastel by day; genuinely glowing after dark.
-- **Remix button** (bottom right): idles as a Siri-style orb — a dark glass
-  sphere with a hot core and palette-tinted blobs swirling at never-repeating
-  periods — then re-rolls the entire page on press: 21 color palettes, spring
+- **Remix button** (bottom right): idles as a free-floating Siri-style orb —
+  a dark sphere with a hot core and palette-tinted blobs swirling at
+  never-repeating periods. Hover it and a glass pill materializes around it
+  with the label; press re-rolls the entire page: 21 color palettes, spring
   curves, tilt/magnet physics, reveal variants, even the orb's own rhythm —
   with a full-screen radial wipe and a 3D tumbling-dice morph (the orb shrinks
   into the die's first pip; the die is frosted glass like the pill).

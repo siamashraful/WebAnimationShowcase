@@ -8,17 +8,28 @@
   :root {
     color-scheme: light;
     --ink: #0e0e10;
-    --paper: #f7f6f3;
+    /* blush — pairs with the emerald/cyan/lime default accents below; its
+       after-dark twin (#1c1318) is the html.night default */
+    --paper: #fdf2f6;
     /* raised surfaces (cards) and the marquee belt — split from --paper so
        night mode can lift them off the page instead of matching it */
     --card: #fff;
     --card-edge: #e8e6e0;
     --belt: #fff;
     --belt-edge: #e3e1db;
-    /* default: Cobalt — deep cobalt into vivid azure and a sky-blue tint */
-    --accent: #1e40af;
-    --accent-2: #3b82f6;
-    --accent-3: #93c5fd;
+    /* default: Aurora — emerald into cyan with a lime fringe (the same trio
+       as the "emerald / cyan / lime" remix palette, so the first press can
+       re-roll it like any other; pairs with the blush paper above) */
+    --accent: #059669;
+    --accent-2: #0891b2;
+    --accent-3: #84cc16;
+    /* hero-word ink ("motion." + its dot/pulse-ring): pass-through by day;
+       html.night lifts both stops toward white. Derived vars, NOT a night
+       remap of the accents themselves — remix() writes --accent inline on
+       <html>, which beats any html.night rule, so these reference the
+       accents and re-tint through them */
+    --hero-accent: var(--accent);
+    --hero-accent-2: var(--accent-2);
     --grey: #6b7280;
     --radius: 20px;
     --spring: cubic-bezier(.22, 1.4, .36, 1);
@@ -65,12 +76,19 @@
      array), ink warms to lamplight, cards lift one step off the page, and
      clear glass — which now sits over dark content — swaps its black lens
      bevel for the white specular stack. Accents, frost and physics are
-     already palette-driven and need no remap. */
+     already palette-driven and need no remap — except the hero word, whose
+     gradient starts from the palette's DEEPEST tone and sinks into the
+     charcoal: its derived --hero-accent pair is lifted toward white here. */
   html.night {
     color-scheme: dark;
+    --hero-accent: color-mix(in srgb, var(--accent) 55%, #fff);
+    --hero-accent-2: color-mix(in srgb, var(--accent-2) 65%, #fff);
     --ink: #edeae4;
-    --paper: #15161a;
-    --grey: #9b9da6;
+    --paper: #1c1318;   /* the blush day default's after-dark twin */
+    /* brighter than a naive day-grey flip: captions read against lifted
+       card surfaces and glowing accents at night, so they need more body
+       (~8.5:1 on --card) while staying clearly dimmer than the ink */
+    --grey: #b4b7c0;
     --card: #1c1d23;
     --card-edge: #2a2b33;
     --belt: #1d1e24;
@@ -105,13 +123,20 @@
     border-radius: 50%;
     transform: translate(-50%, -50%);
   }
+  /* white ink + difference blend: the cursor self-inverts against whatever
+     is under it — near-black over the light papers, white over the DEPTH
+     band and the night charcoal, adaptive over the aurora — with no zone
+     tracking. (A var(--ink) cursor went invisible over the band, which is
+     ink-dark in BOTH modes.) */
   .cursor-dot {
     width: 8px; height: 8px;
-    background: var(--ink);
+    background: #fff;
+    mix-blend-mode: difference;
   }
   .cursor-ring {
     width: 36px; height: 36px;
-    border: 1.5px solid var(--ink);
+    border: 1.5px solid #fff;
+    mix-blend-mode: difference;
     opacity: .35;
     transition: width .35s var(--spring), height .35s var(--spring),
                 opacity .3s ease, border-color .3s ease;
@@ -119,6 +144,7 @@
   body.cursor-grow .cursor-ring {
     width: 64px; height: 64px;
     opacity: .9; border-color: var(--accent);
+    mix-blend-mode: normal;   /* the accent must read true, not inverted */
   }
   @media (hover: none) {
     body { cursor: auto; }
@@ -311,7 +337,7 @@
   /* optical nudge — "Design in" sits a touch left of the centered axis */
   .hero h1 .line:first-child { transform: translateX(-.14em); }
   .hero h1 .word.accent {
-    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    background: linear-gradient(120deg, var(--hero-accent), var(--hero-accent-2));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -327,7 +353,7 @@
     /* being positioned excludes it from the word's background-clip:text
        painting (the glyph would vanish) — paint it directly in the
        gradient's tail colour instead, which is what the period showed */
-    color: var(--accent-2);
+    color: var(--hero-accent-2);
   }
   /* The pulse lives on the LINE, not inside the word: background-clip:text
      makes the letterforms the word's *background*, and a negative-z child
@@ -348,7 +374,7 @@
        the glyph advance box — the period's ink sits low and right of that box */
     margin-left: -.273em;
     bottom: -.004em;
-    border: .075em solid var(--accent-2);
+    border: .075em solid var(--hero-accent-2);   /* matches the dot's ink in both modes */
     border-radius: 50%;
     filter: blur(.04em);   /* soft glow, not a hard line */
     opacity: 0; transform: scale(.4);
@@ -378,6 +404,17 @@
     color: var(--grey); font-size: 18px; line-height: 1.6;
     opacity: 0; transform: translateY(24px);
     animation: fade-up .9s var(--ease-out) .5s forwards;
+  }
+  /* night: the subtitle (and scroll hint) sit on top of GLOWING aurora
+     curtains, not the charcoal — the grey mid-tone washes out wherever a
+     bright band drifts behind it. Lift the tone toward ink and scrim with
+     a soft dark halo (a shadow, not a panel, so the aurora still reads
+     between the lines). Day needs neither: the curtains are pastel there
+     and the grey already carries. */
+  html.night .hero p,
+  html.night .scroll-hint {
+    color: color-mix(in srgb, var(--ink) 75%, var(--grey));
+    text-shadow: 0 1px 14px rgba(10, 8, 12, .8), 0 0 3px rgba(10, 8, 12, .55);
   }
   @keyframes fade-up {
     to { opacity: 1; transform: translateY(0); }
@@ -930,26 +967,44 @@
        content */
     padding: 14px 34px; border-radius: 100px;
     border: none; cursor: none;
+    /* explicit — a <button> carries the UA buttonface fill (~#f0f0f0),
+       which returns the moment no author background is set. The glass
+       lives on .skin, so without this line the idle orb floats on a grey
+       disc (invisible over light paper, a hard ring over the DEPTH band). */
+    background: transparent;
     font: 700 17px "Segoe UI", system-ui, sans-serif;
-    /* tinted → FROSTED liquid glass: translucent gradient + blur + specular
-       lens rim, over the existing float shadow. The morph square and the
-       cube faces reuse the same --frost tint, so pill and die read as one
-       material through the whole press choreography. */
-    background: linear-gradient(120deg, var(--frost-1), var(--frost-2));
-    -webkit-backdrop-filter: blur(16px) saturate(1.5);
-    backdrop-filter: blur(16px) saturate(1.5);
     color: #fff;
-    box-shadow: var(--glass-rim-light), 0 12px 36px rgba(14,14,16,.3);
-    transition: transform .45s var(--spring), box-shadow .45s var(--spring),
+    transition: transform .45s var(--spring),
                 width .5s var(--spring), height .5s var(--spring),
                 border-radius .5s var(--spring), padding .5s var(--spring),
                 gap .5s var(--spring);
     will-change: transform;
   }
+  /* tinted → FROSTED liquid glass: translucent gradient + blur + specular
+     lens rim, over the float shadow. The morph square and the cube faces
+     reuse the same --frost tint, so pill and die read as one material
+     through the whole press choreography. The glass lives on a dedicated
+     .skin layer (not the button itself) so the orb-first idle can FADE it
+     away — gradient backgrounds and backdrop-filter don't interpolate, so
+     opacity on a skin is the only way the glass dissolves rather than
+     snaps. z:-1 keeps it under the orb, label and both pseudos, inside the
+     button's own stacking context (will-change: transform). */
+  .remix-btn .skin {
+    position: absolute; inset: 0; z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(120deg, var(--frost-1), var(--frost-2));
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    backdrop-filter: blur(16px) saturate(1.5);
+    box-shadow: var(--glass-rim-light), 0 12px 36px rgba(14,14,16,.3);
+    transition: opacity .3s ease, box-shadow .45s var(--spring);
+    pointer-events: none;
+  }
   .remix-btn .label {
     display: inline-block; max-width: 90px; overflow: hidden;
     white-space: nowrap;
-    transition: opacity .35s ease;   /* fades in only after the pill has unfolded */
+    /* max-width rides the spring so the orb-first fold/unfold (below) gets
+       the same bounce as the rest of the pill */
+    transition: opacity .35s ease, max-width .5s var(--spring);
   }
   /* idle routine — a Siri-style orb where the die used to sit: a dark sphere
      with a hot white core and two translucent accent blobs swirling over it.
@@ -969,10 +1024,11 @@
     background:
       radial-gradient(circle at 38% 36%, #fff 0 10%, rgba(255,255,255,.65) 24%, transparent 52%),
       #0e0e10;
-    /* the zero-size inset is a real entry so the press state's white flood
-       interpolates instead of jumping (shadow lists only animate when they
-       pair up inset-for-inset) */
+    /* the zero-size entries are real so every state interpolates instead of
+       jumping (shadow lists only animate when they pair up entry-for-entry):
+       slot 2 is the floating-idle drop shadow, slot 3 the press flood */
     box-shadow: 0 0 12px 1px color-mix(in srgb, var(--accent-2) 40%, transparent),
+                0 0 0 rgba(14,14,16,0),
                 inset 0 0 0 0 rgba(255,255,255,0);
     /* the breathing lives HERE, slow and eased — not in the blob keyframes,
        where a linear scale ramp reversed direction instantly at its peak and
@@ -1032,7 +1088,8 @@
   .remix-btn.morphing .orb {
     width: calc(var(--pip-r) * 2); height: calc(var(--pip-r) * 2);
     animation: none;   /* breathing off mid-morph */
-    box-shadow: 0 0 0 0 transparent, inset 0 0 0 calc(var(--pip-r) * 2) #fff;
+    box-shadow: 0 0 0 0 transparent, 0 0 0 rgba(14,14,16,0),
+                inset 0 0 0 calc(var(--pip-r) * 2) #fff;
     /* the shrink follows the pill's non-overshooting curve — on --spring the
        pip dips below target and bounces while the pill eases, the exact
        artifact the pill's own override exists to kill */
@@ -1061,13 +1118,15 @@
        barely moves — so the "square" reads as a tall rectangle for a beat.
        A plain ease-out keeps width and height converging in step; the base
        spring still rules the unfold once this class is gone. */
-    transition: transform .45s var(--spring), box-shadow .45s var(--spring),
+    transition: transform .45s var(--spring),
                 width .5s var(--ease-out), height .5s var(--ease-out),
                 border-radius .5s var(--ease-out), padding .5s var(--ease-out),
                 gap .5s var(--ease-out);
-    /* same frosted recipe as the resting pill (the pill's own backdrop blur
-       and glass rim stay active underneath), and matches the cube-face
-       design so the square→cube swap is seamless */
+  }
+  /* same frosted recipe as the resting pill (whose backdrop blur and glass
+     rim live on the same skin and stay active underneath), and matches the
+     cube-face design so the square→cube swap is seamless */
+  .remix-btn.morphing .skin {
     background: linear-gradient(135deg, var(--frost-1), var(--frost-2));
     border: 1px solid rgba(255,255,255,.35);
   }
@@ -1128,11 +1187,9 @@
             radial-gradient(circle var(--pip-r) at 66% 50%, #fff 0 88%, transparent 100%),
             radial-gradient(circle var(--pip-r) at 66% 73%, #fff 0 88%, transparent 100%); }
   /* spin phase: the flat square becomes a tumbling 3D cube */
-  .remix-btn.spin3d {
-    perspective: 340px;
-    background: transparent;
-    box-shadow: none;
-  }
+  .remix-btn.spin3d { perspective: 340px; }
+  /* slab gone during the spin — only the cube shows */
+  .remix-btn.spin3d .skin { opacity: 0; }
   .remix-btn.spin3d::before { animation: none; opacity: 0; }
   .remix-btn.spin3d .cube {
     display: block;
@@ -1158,19 +1215,68 @@
     0%, 16%    { box-shadow: 0 0 0 0 var(--accent); opacity: .8; }
     46%, 100%  { box-shadow: 0 0 0 24px transparent; opacity: 0; }
   }
-  .remix-btn:hover {
-    transform: scale(1.08);
-    box-shadow: 0 16px 44px rgba(14,14,16,.35);
-  }
+  .remix-btn:hover { transform: scale(1.08); }
+  .remix-btn:hover .skin { box-shadow: 0 16px 44px rgba(14,14,16,.35); }
   .remix-btn:active { transform: scale(.92); }
   /* the pointer is necessarily on the button mid-press, so without these the
      hover grow keeps the collapsing square (and the cube, whose translateZ
-     maths assume 62px) at 1.08× until the pointer happens to leave */
-  .remix-btn.morphing:hover {
-    transform: none;
+     maths assume 62px) at 1.08× until the pointer happens to leave
+     (no spin3d:hover rule needed — the skin is already faded out there) */
+  .remix-btn.morphing:hover { transform: none; }
+  .remix-btn.morphing:hover .skin {
     box-shadow: var(--glass-rim-light), 0 12px 36px rgba(14,14,16,.3);
   }
-  .remix-btn.spin3d:hover { box-shadow: none; }   /* spin phase hides the slab entirely */
+  /* ── orb-first idle (pointer devices) ──
+     At rest the button is just the orb, enlarged in a snug glass circle;
+     hovering (or keyboard focus) unfolds it into the labelled pill, and
+     leaving folds it back. The collapse is expressed as the OVERRIDE (same
+     pattern as the nav's merged state) so the pill stays the canonical
+     state the morph choreography starts from — a click can only land while
+     hovered/focused, i.e. expanded, so morphToDie() still freezes the full
+     pill size. The morph classes are excluded so losing hover behind the
+     wipe can't fold the die mid-spin. No border-radius override needed:
+     the pill's 100px clamps to a perfect circle once width equals height.
+     Touch keeps the always-expanded pill — it has no hover to unfold with. */
+  @media (hover: hover) {
+    .remix-btn:not(:hover):not(:focus-visible):not(.morphing):not(.spin3d):not(.unfolding) {
+      padding: 12px; gap: 0;
+    }
+    /* no housing at rest — the glass dissolves and the orb floats free
+       (the button box stays as an invisible, comfortably-sized hit target) */
+    .remix-btn:not(:hover):not(:focus-visible):not(.morphing):not(.spin3d):not(.unfolding) .skin {
+      opacity: 0;
+    }
+    .remix-btn:not(:hover):not(:focus-visible):not(.morphing):not(.spin3d):not(.unfolding) .label {
+      max-width: 0; opacity: 0;
+    }
+    .remix-btn:not(:hover):not(:focus-visible):not(.morphing):not(.spin3d):not(.unfolding) .orb {
+      width: 44px; height: 44px;
+      /* the orb IS the button now — an accent halo to announce it plus a
+         soft drop shadow so it reads as floating off the page (same
+         zero-size inset entry as the base so the press flood still
+         interpolates) */
+      box-shadow: 0 0 22px 4px color-mix(in srgb, var(--accent-2) 55%, transparent),
+                  0 10px 26px rgba(14,14,16,.35),
+                  inset 0 0 0 0 rgba(255,255,255,0);
+    }
+    /* against a dark backdrop the orb's crisp disc edge reads as a hard
+       cut-out (over light paper the dark housing draws that boundary and
+       looks intentional). Diffuse it from the INSIDE: a dark inset vignette
+       fades the blob light out before it hits the clipped rim, and the
+       accent halo swells wider and softer, so the orb blooms into the dark
+       instead of sitting on it. (Not a mask feather — masks also hide the
+       element's own box-shadow, which would kill the halo.) Same 3-slot
+       shadow list as the day rule so every state still interpolates.
+       Applies at night (whole page is dark) AND while the fixed button
+       crosses the day-mode DEPTH band (.over-dark, toggled in the rAF
+       loop from the measure() cache). */
+    html.night .remix-btn:not(:hover):not(:focus-visible):not(.morphing):not(.spin3d):not(.unfolding) .orb,
+    .remix-btn.over-dark:not(:hover):not(:focus-visible):not(.morphing):not(.spin3d):not(.unfolding) .orb {
+      box-shadow: 0 0 30px 8px color-mix(in srgb, var(--accent-2) 42%, transparent),
+                  0 10px 26px rgba(14,14,16,.35),
+                  inset 0 0 12px 7px rgba(12, 9, 13, .78);
+    }
+  }
   @media (hover: none) { .remix-btn { cursor: pointer; } }
 
   /* tooltip — shown after hovering the button for 2s */
@@ -1390,7 +1496,7 @@
 </div>
 
 <button class="remix-btn magnetic" id="remixBtn" data-hover>
-  <span class="orb" aria-hidden="true"></span><span class="label">Remix</span>
+  <span class="skin" aria-hidden="true"></span><span class="orb" aria-hidden="true"></span><span class="label">Remix</span>
   <span class="cube" aria-hidden="true">
     <span class="face f1"></span>
     <span class="face f2"></span>
@@ -1618,8 +1724,18 @@
      the unresolved glyphs). glyph slots are width-frozen so the shuffle never
      reflows the line, and the crisp original text is restored at the end so
      kerning stays pixel-perfect once it settles. */
+  /* every glyph class gets a reel — punctuation and digits shuffle too
+     (through their own kind, so a full stop flips through symbols, not
+     letters). Reels differ in length: index with % set.length, never a
+     literal 26. */
   const SCRAMBLE_LETTERS = 'abcdefghijklmnopqrstuvwxyz';
-  const scrambleSet = c => (c >= 'A' && c <= 'Z') ? SCRAMBLE_LETTERS.toUpperCase() : SCRAMBLE_LETTERS;
+  const SCRAMBLE_DIGITS = '0123456789';
+  const SCRAMBLE_SYMBOLS = '*+=~:;!?.,';
+  const scrambleSet = c =>
+    (c >= 'A' && c <= 'Z') ? SCRAMBLE_LETTERS.toUpperCase() :
+    (c >= 'a' && c <= 'z') ? SCRAMBLE_LETTERS :
+    (c >= '0' && c <= '9') ? SCRAMBLE_DIGITS : SCRAMBLE_SYMBOLS;
+  const scrambleAt = (c, n) => { const s = scrambleSet(c); return s[n % s.length]; };
   function scrambleIn(el) {
     const full = el.dataset.full || (el.dataset.full = el.textContent);
     const gen = el._gen = (el._gen || 0) + 1;
@@ -1631,7 +1747,7 @@
       const ws = document.createElement('span'); ws.className = 'w';
       for (const c of w) {
         const cs = document.createElement('span'); cs.className = 'ch';
-        cs.textContent = c; cs._final = c; cs._fixed = !/[a-z]/i.test(c);
+        cs.textContent = c; cs._final = c; cs._fixed = false;   // everything shuffles, punctuation included
         ws.appendChild(cs); chs.push(cs);
       }
       el.appendChild(ws);
@@ -1640,9 +1756,17 @@
     chs.forEach((cs, i) => {                                          // …then start each letter pre-scrambled
       if (cs._fixed) return;
       cs.classList.add('shuf');
-      cs.textContent = scrambleSet(cs._final)[(i * 7) % 26];
+      cs.textContent = scrambleAt(cs._final, i * 7);
     });
     const lockBase = 180, lockStep = 34, tickMs = 55;
+    // the heading owns its section's counters: both start on the same frame
+    // and the counters are told when the shuffle's last glyph locks, so
+    // numbers and letters tick at one cadence and settle together. The
+    // counters' own IO stays as a fallback for viewports that crop the
+    // heading out; the _counted guard prevents double runs.
+    const lastIdx = chs.reduce((m, c, i) => (c._fixed ? m : i), 0);
+    el.closest('section')?.querySelectorAll('.num[data-count]')
+      .forEach(n => runCounter(n, lockBase + lastIdx * lockStep));
     let t0 = 0, lastTick = 0, reel = 0;
     function frame(now) {
       if (el._gen !== gen) return;            // a newer run superseded this one
@@ -1658,7 +1782,7 @@
           if (cs.classList.contains('shuf')) { cs.textContent = cs._final; cs.classList.remove('shuf'); }
         } else {
           done = false;
-          if (tick) cs.textContent = scrambleSet(cs._final)[(reel + i * 5) % 26];
+          if (tick) cs.textContent = scrambleAt(cs._final, reel + i * 5);
         }
       }
       if (done) { el.textContent = full; el._scrambling = false; }   // restore crisp original (perfect kerning)
@@ -1690,20 +1814,28 @@
   }, { threshold: [0, 0.2], rootMargin: '0px 0px -110px 0px' });
   document.querySelectorAll('.reveal, .stagger').forEach(el => io.observe(el));
 
-  /* ── animated counters (spring-ish ease-out) ── */
+  /* ── animated counters (linear, split-flap cadence) ──
+     LINEAR on purpose: the stats heading's scramble locks letters at a
+     constant cadence, and these normally run in step with it — an
+     ease-out made the last digits crawl (59… 59… 60) while the letters
+     kept clicking, which read as two different animations. Linear also
+     means the number visibly stops exactly at settleMs, no round()
+     compensation needed. */
+  function runCounter(el, settleMs = 1600) {
+    if (el._counted) return;
+    el._counted = true;
+    counterIO.unobserve(el);
+    const target = +el.dataset.count, suffix = el.dataset.suffix || '';
+    const t0 = performance.now();
+    (function tick(now) {
+      const p = Math.min((now - t0) / settleMs, 1);
+      el.textContent = Math.round(target * p) + suffix;
+      if (p < 1) requestAnimationFrame(tick);
+    })(t0);
+  }
   const counterIO = new IntersectionObserver(entries => {
     entries.forEach(en => {
-      if (!en.isIntersecting) return;
-      const el = en.target;
-      counterIO.unobserve(el);
-      const target = +el.dataset.count, suffix = el.dataset.suffix || '';
-      const t0 = performance.now(), dur = 1600;
-      (function tick(now) {
-        const p = Math.min((now - t0) / dur, 1);
-        const eased = 1 - Math.pow(1 - p, 4);
-        el.textContent = Math.round(target * eased) + suffix;
-        if (p < 1) requestAnimationFrame(tick);
-      })(t0);
+      if (en.isIntersecting) runCounter(en.target);
     });
   }, { threshold: 0.6 });
   const counterEls = [...document.querySelectorAll('.num[data-count]')];
@@ -1754,7 +1886,7 @@
   let lastY = scrollY, vel = 0, hintStill = 0, glitchOn = false;
   /* last-written values — per-frame style writes are skipped when nothing
      changed, so an idle page does no DOM work at all */
-  let wDotX, wDotY, wProg = '', wNav = null;
+  let wDotX, wDotY, wProg = '', wNav = null, wOver = false;
 
   let lastFrameT = performance.now();
   function frame(now) {
@@ -1863,6 +1995,14 @@
     const past = scrollY > 60;
     if (past !== wNav) { navEl.classList.toggle('scrolled', past); wNav = past; }
 
+    // the fixed orb crosses the dark DEPTH band while scrolling — hand it
+    // the night diffusion for the duration (.over-dark; CSS owns the look,
+    // and html.night already covers the always-dark case). Geometry is all
+    // measure()-cache; 62 ≈ the bottom offset plus half the idle button.
+    const orbDocY = scrollY + vh - 62;
+    const overBand = orbDocY > bandTop && orbDocY < bandTop + bandH;
+    if (overBand !== wOver) { remixBtn.classList.toggle('over-dark', overBand); wOver = overBand; }
+
     // scroll hint: hidden while the page is moving, back ~600ms after it stops
     if (scrollY !== lastY) { hintStill = performance.now(); hint.classList.add('hide'); }
     else if (performance.now() - hintStill > 600) hint.classList.remove('hide');
@@ -1969,8 +2109,13 @@
     return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
   };
   /* one tiny vertical gradient per curtain colour, rebuilt only on remix:
-     white-hot upper edge → body colour → clear, the classic curtain
-     falloff (bright where the solar wind hits, dissolving below) */
+     soft crest → white-hot limb just below it → body colour → clear. The
+     crest MUST ramp from alpha 0: the strips' top edges shift sub-pixel
+     every frame and carry per-strip shimmer alpha, and a hard bright stop
+     right at the edge temporally aliases — invisible over light paper,
+     but flickering crawl at night where screen-blend puts the edge at
+     max contrast against the charcoal. (Real aurora tops are diffuse
+     anyway — the hot band hangs just under the crest.) */
   function auroraGrads(cols) {
     aurora.grads = cols.map(c => {
       const [r, g, b] = hexRGB(c);
@@ -1978,8 +2123,10 @@
       cv.width = 8; cv.height = 256;
       const x = cv.getContext('2d');
       const gr = x.createLinearGradient(0, 0, 0, 256);
-      gr.addColorStop(0, `rgba(${r + (255 - r) * .7 | 0},${g + (255 - g) * .7 | 0},${b + (255 - b) * .7 | 0},.9)`);
-      gr.addColorStop(.12, `rgba(${r},${g},${b},.8)`);
+      const hot = `${r + (255 - r) * .7 | 0},${g + (255 - g) * .7 | 0},${b + (255 - b) * .7 | 0}`;
+      gr.addColorStop(0, `rgba(${hot},0)`);
+      gr.addColorStop(.07, `rgba(${hot},.5)`);
+      gr.addColorStop(.18, `rgba(${r},${g},${b},.75)`);
       gr.addColorStop(.55, `rgba(${r},${g},${b},.26)`);
       gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
       x.fillStyle = gr; x.fillRect(0, 0, 8, 256);
@@ -2051,9 +2198,9 @@
 
   /* ── REMIX: re-roll every animation parameter and replay ── */
   const palettes = [
-    ['#047857', '#22c55e', '#84cc16'],   // stock-market green (:root default is cobalt — see top)
+    ['#047857', '#22c55e', '#84cc16'],   // stock-market green
     ['#4f46e5', '#ec4899', '#f59e0b'],   // indigo / pink / amber
-    ['#059669', '#0891b2', '#84cc16'],   // emerald / cyan / lime
+    ['#059669', '#0891b2', '#84cc16'],   // emerald / cyan / lime (= the :root default — see top)
     ['#dc2626', '#ea580c', '#facc15'],   // red / orange / gold
     ['#7c3aed', '#d946ef', '#0ea5e9'],   // violet / fuchsia / sky
     ['#0f766e', '#e11d48', '#f59e0b'],   // teal / rose / amber
@@ -2141,8 +2288,10 @@
       w.style.animation = `word-in ${rr(.6, 1.4).toFixed(2)}s ${spring} ${(i * rr(.06, .22)).toFixed(2)}s forwards`;
     });
 
-    // re-run counters
+    // re-arm counters (clearing _counted so the heading rescramble — or the
+    // IO fallback — can run them again)
     counterEls.forEach(el => {
+      el._counted = false;
       el.textContent = '0' + (el.dataset.suffix || '');
       counterIO.observe(el);
     });
