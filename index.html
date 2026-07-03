@@ -567,6 +567,9 @@
 
   /* ───────── sections ───────── */
   section.block { padding: 140px 48px; max-width: 1200px; margin: 0 auto; }
+  /* ONE kicker on the whole page (the footer's "The end — almost") — a
+     single voiced label is a brand note; one per section was template
+     grammar, so the section copies were removed. Don't reintroduce them. */
   .eyebrow {
     font-size: 13px; font-weight: 700; letter-spacing: .22em;
     text-transform: uppercase; color: var(--accent);
@@ -673,6 +676,55 @@
   /* post-effect cooldown: hover tilt stays disarmed until the cursor
      leaves and re-enters, so the animation's resting pose holds still */
   .card.fx-cooldown:hover .icon { transform: translateZ(40px); }
+
+  /* per-effect hover hints: each icon previews ITS press performance in
+     miniature the moment the cursor arrives, so the six cards advertise
+     what they do instead of reading as an interchangeable grid. One-shot
+     per entry and hover-gated — zero idle cost, nothing on touch — and
+     every keyframe carries translateZ(40px) so the icon never pops off
+     its 3D resting plane. Ends on the shared hover pose, which the base
+     transition then owns. :not([class*="fx-"]) excludes BOTH the cooldown
+     and a playing press effect — these selectors outrank .card.fx-* .icon
+     on specificity, so without it a hint would hijack the icon mid-
+     performance. */
+  .card:not([class*="fx-"]):hover .icon[data-fx="spring"]  { animation: hint-spring .7s var(--spring); }
+  .card:not([class*="fx-"]):hover .icon[data-fx="magnet"]  { animation: hint-magnet .7s var(--spring); }
+  .card:not([class*="fx-"]):hover .icon[data-fx="flip"]    { animation: hint-flip .8s var(--ease-out); }
+  .card:not([class*="fx-"]):hover .icon[data-fx="cascade"] { animation: hint-cascade .7s var(--ease-out); }
+  .card:not([class*="fx-"]):hover .icon[data-fx="depth"]   { animation: hint-depth .8s var(--ease-out); }
+  .card:not([class*="fx-"]):hover .icon[data-fx="skew"]    { animation: hint-skew .6s var(--ease-out); }
+  @keyframes hint-spring {
+    0%   { transform: translateZ(40px) scale(1, 1); }
+    30%  { transform: translateZ(40px) scale(1.26, .82); }
+    58%  { transform: translateZ(40px) scale(.92, 1.18); }
+    100% { transform: translateZ(40px) scale(1.15) rotate(-6deg); }
+  }
+  @keyframes hint-magnet {
+    0%   { transform: translateZ(40px) translateX(0); }
+    35%  { transform: translateZ(40px) translateX(9px) rotate(8deg); }
+    65%  { transform: translateZ(40px) translateX(-5px) rotate(-4deg); }
+    100% { transform: translateZ(40px) scale(1.15) rotate(-6deg); }
+  }
+  @keyframes hint-flip {
+    0%   { transform: translateZ(40px) rotateY(0); }
+    100% { transform: translateZ(40px) rotateY(360deg) scale(1.15) rotate(-6deg); }
+  }
+  @keyframes hint-cascade {
+    0%   { transform: translateZ(40px) translateY(0); }
+    35%  { transform: translateZ(40px) translateY(-7px); }
+    68%  { transform: translateZ(40px) translateY(5px); }
+    100% { transform: translateZ(40px) scale(1.15) rotate(-6deg); }
+  }
+  @keyframes hint-depth {
+    0%   { transform: translateZ(40px); }
+    45%  { transform: translateZ(80px) scale(1.08); }
+    100% { transform: translateZ(40px) scale(1.15) rotate(-6deg); }
+  }
+  @keyframes hint-skew {
+    0%   { transform: translateZ(40px) skewX(0); }
+    42%  { transform: translateZ(40px) skewX(-12deg) translateX(7px); }
+    100% { transform: translateZ(40px) scale(1.15) rotate(-6deg); }
+  }
 
   /* ── icon press effects — whole-card performances, one per concept ── */
 
@@ -946,8 +998,11 @@
   .stat .num {
     font-size: clamp(44px, 6vw, 72px);
     font-weight: 800; letter-spacing: -.03em;
-    background: linear-gradient(120deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text; background-clip: text; color: transparent;
+    /* solid, not the gradient-clip treatment: at display size one committed
+       colour reads stronger, and the numbers stop echoing the stock
+       "gradient metric" template. --hero-accent (not --accent) so night
+       mode lifts it off the charcoal like the hero word. */
+    color: var(--hero-accent);
     font-variant-numeric: tabular-nums;
   }
   .stat .label { margin-top: 8px; color: var(--grey); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
@@ -1452,6 +1507,9 @@
     .remix-tip strong, .remix-tip .holo, .remix-tip .holo::after { animation: none; }
     .parallax-band.glitching .type-layer::before,
     .parallax-band.glitching .type-layer::after { animation: none; opacity: 0; }
+    /* hover hints are ambient-adjacent (not an explicit press) — off.
+       Matches the hint selectors' specificity, and later wins. */
+    .card:not([class*="fx-"]):hover .icon[data-fx] { animation: none; }
   }
 </style>
 </head>
@@ -1499,7 +1557,6 @@
 
 <!-- FEATURES -->
 <section class="block" id="work">
-  <div class="eyebrow reveal">What's inside</div>
   <h2 class="title reveal">Every element on this page moves with intent.</h2>
   <div class="grid stagger">
     <div class="card tilt" data-hover>
@@ -1546,7 +1603,6 @@
 
 <!-- STATS -->
 <section class="block" id="stats">
-  <div class="eyebrow reveal">By the numbers</div>
   <h2 class="title reveal scramble">Animated counters that spring to their target.</h2>
   <div class="stats reveal">
     <div class="stat"><div class="num" data-count="60" data-suffix="fps">0</div><div class="label">Butter smooth</div></div>
@@ -1560,7 +1616,6 @@
 
 <!-- MORE REVEAL VARIANTS -->
 <section class="block">
-  <div class="eyebrow reveal">Reveal variants</div>
   <h2 class="title reveal flip">This headline flips up from the baseline.</h2>
   <div class="grid" style="margin-top:48px">
     <div class="card reveal from-left" data-hover>
