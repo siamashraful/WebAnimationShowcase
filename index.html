@@ -1881,8 +1881,14 @@
   const hint = document.querySelector('.scroll-hint');
   const layers = [...document.querySelectorAll('.type-layer')];
   const band = document.querySelector('.parallax-band');
-  // the cinematic glitch copies are pseudo-elements drawn from data-text
-  layers.forEach(l => { l.dataset.text = l.textContent; });
+  // the cinematic glitch copies are pseudo-elements drawn from data-text.
+  // The HTML word counts are only seeds — measure() re-tiles each row to
+  // cover the viewport at its parallax extremes (see there).
+  layers.forEach(l => {
+    l._word = l.textContent.split('\u2002')[0];   // the &ensp; joiner
+    l._n = l.textContent.split('\u2002').length;
+    l.dataset.text = l.textContent;
+  });
   let lastY = scrollY, vel = 0, hintStill = 0, glitchOn = false;
   /* last-written values — per-frame style writes are skipped when nothing
      changed, so an idle page does no DOM work at all */
@@ -2184,6 +2190,21 @@
     // back up; assigning width/height also clears it — next frame repaints)
     aurW = aurCv.width = Math.ceil(hero.offsetWidth / AUR_SCALE);
     aurH = aurCv.height = Math.ceil(hero.offsetHeight / AUR_SCALE);
+    // DEPTH rows: each row slides ±speed·(bandH+vh)/2 with scroll plus
+    // ±speed·110 cursor drift, so tile its word until it still covers the
+    // viewport at both extremes — too few copies uncovers bare band at the
+    // edges. Grow-only: per-word width comes from the current content, and
+    // shrinking on resize would churn text for no visual gain.
+    layers.forEach(l => {
+      const sp = +l.dataset.speed;
+      const travel = sp * ((bandH + vh) / 2 + 110) + 24;
+      const unitW = l.offsetWidth / l._n;
+      const n = Math.ceil((vw + 2 * travel) / unitW) + 1;
+      if (n > l._n) {
+        l._n = n;
+        l.dataset.text = l.textContent = Array(n).fill(l._word).join('\u2002');
+      }
+    });
   }
   measure();
   addEventListener('resize', measure);
