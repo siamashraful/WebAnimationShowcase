@@ -388,41 +388,25 @@
     animation: fade-up .9s var(--ease-out) .7s forwards;
   }
 
-  /* floating blobs behind hero */
-  .blob {
-    position: absolute; border-radius: 50%;
-    filter: blur(70px); opacity: .35; z-index: -1;
-    /* keyframes own `transform` (the wander); the cursor gravitation in
-       the rAF loop drives the separate `translate` property, so the two
-       motions compose without fighting */
-    animation: drift-a 10s ease-in-out infinite alternate;
+  /* ───────── aurora borealis behind the hero ─────────
+     Painted per frame into a 1/3-resolution canvas by the rAF loop (the
+     aurora block in the script) and CSS-upscaled with a blur — the upscale
+     hides the low res, the blur turns the strips into soft curtains of
+     light. Day mode composites them as pastel washes over the paper; night
+     mode screen-blends so they genuinely glow against the dark sky.
+     Repainting is skipped in JS while the hero is offstage — the canvas
+     has no CSS animation, so there is nothing to pause here. */
+  .hero-aurora {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    z-index: -1; pointer-events: none;
+    filter: blur(12px) saturate(1.25);
+    opacity: .6;
   }
-  .blob.b1 { width: 420px; height: 420px; background: var(--accent);   top: 8%;  left: 6%; }
-  .blob.b2 { width: 360px; height: 360px; background: var(--accent-2); bottom: 10%; right: 8%;
-             animation-name: drift-b; animation-duration: 14s; animation-delay: -7s; }
-  .blob.b3 { width: 260px; height: 260px; background: var(--accent-3); top: 55%; left: 42%;
-             animation-name: drift-c; animation-duration: 7.5s; animation-delay: -4s; }
-  /* lava-lamp wander: each blob walks its own waypoints, squashing and
-     stretching like liquid (the tilt only reads because the ellipse is
-     squashed), breathing a little opacity; alternate plays the path in
-     reverse so there is no loop seam */
-  @keyframes drift-a {
-    0%   { transform: translate(0, 0) scale(1, 1); opacity: .35; }
-    33%  { transform: translate(130px, -85px) scale(1.3, .78) rotate(12deg); opacity: .5; }
-    66%  { transform: translate(40px, 75px) scale(.82, 1.22) rotate(-9deg); opacity: .28; }
-    100% { transform: translate(-90px, -45px) scale(1.12, 1.06); opacity: .45; }
-  }
-  @keyframes drift-b {
-    0%   { transform: translate(0, 0) scale(1, 1); opacity: .35; }
-    30%  { transform: translate(-100px, 60px) scale(.84, 1.28) rotate(-13deg); opacity: .28; }
-    65%  { transform: translate(60px, -95px) scale(1.26, .82) rotate(9deg); opacity: .5; }
-    100% { transform: translate(-45px, -30px) scale(1.04, 1.14); opacity: .4; }
-  }
-  @keyframes drift-c {
-    0%   { transform: translate(0, 0) scale(1, 1); opacity: .35; }
-    35%  { transform: translate(80px, 65px) scale(1.32, .78) rotate(15deg); opacity: .48; }
-    70%  { transform: translate(-95px, 15px) scale(.8, 1.24) rotate(-12deg); opacity: .26; }
-    100% { transform: translate(35px, -70px) scale(1.1, 1.08); opacity: .42; }
+  html.night .hero-aurora {
+    mix-blend-mode: screen;   /* additive light over the dark paper */
+    filter: blur(12px) saturate(1.5);
+    opacity: .85;
   }
 
   /* scroll hint */
@@ -1241,10 +1225,9 @@
   .remix-tip:not(.show) .holo,
   .remix-tip:not(.show) .holo::after { animation-play-state: paused; }
 
-  /* sections flagged offscreen by JS pause their infinite keyframes —
-     chiefly the 70px-blurred blobs, the costliest paint on the page,
-     which otherwise keep compositing several viewports away */
-  .offstage .blob,
+  /* sections flagged offscreen by JS pause their infinite keyframes
+     (the hero aurora needs no rule here: it's canvas, and the rAF loop
+     skips its repaint entirely when the hero is offstage) */
   .offstage .scroll-hint,
   .offstage .chevrons span,
   .offstage .line::after { animation-play-state: paused; }
@@ -1284,9 +1267,7 @@
 
 <!-- HERO -->
 <header class="hero">
-  <div class="blob b1"></div>
-  <div class="blob b2"></div>
-  <div class="blob b3"></div>
+  <canvas class="hero-aurora" aria-hidden="true"></canvas>
   <h1>
     <span class="line"><span class="word">Design&nbsp;in</span></span>
     <span class="line"><span class="word accent">motion<span class="dot" id="motionDot" data-hover role="button" tabindex="0" aria-label="Send the word on a lap around the screen">.</span></span></span>
@@ -1806,31 +1787,43 @@
       if (t !== m.wt) { m.el.style.translate = t; m.wt = t; }
     });
 
-    // hero blobs gravitate toward the cursor — three pulls, three lags, so
-    // the background parallaxes like liquid at three depths. Drives the
-    // `translate` property so the keyframe wander keeps playing on
-    // `transform` underneath. Skipped offscreen; the toFixed strings
-    // stabilize once the cursor parks, so an idle hero writes nothing.
+    // aurora: repainted only while the hero is on screen — an offscreen
+    // hero paints nothing, the same economy as the old blob pausing. The
+    // canvas is the loop's one whole-surface repaint, which is why it
+    // renders at 1/3 resolution; everything else here is arithmetic (no
+    // layout reads — vw/vh/aurW/aurH all come from measure()).
     if (onScreen.get(hero)) {
-      const gx = rx - vw / 2, gy = ry - vh / 2;
-      blobs.forEach((b, i) => {
-        const s = blobState[i];
-        const f = .05 + i * .025;
-        s.x = lerp(s.x, gx * blobG[i], f);
-        s.y = lerp(s.y, gy * blobG[i], f);
-        // liquid stretch: elongate along the direction of travel, settle
-        // round — axis-aligned so it rides the independent `scale`
-        // property, composing with both the wander and the chase
-        const vx = s.x - s.lx, vy = s.y - s.ly;
-        s.lx = s.x; s.ly = s.y;
-        s.sx = lerp(s.sx, Math.max(.8, Math.min(1.3, 1 + (Math.abs(vx) - Math.abs(vy)) * .02)), .2);
-        s.sy = lerp(s.sy, Math.max(.8, Math.min(1.3, 1 + (Math.abs(vy) - Math.abs(vx)) * .02)), .2);
-        const t = `${s.x.toFixed(1)}px ${s.y.toFixed(1)}px`;
-        if (t !== s.w) { b.style.translate = t; s.w = t; }
-        const sc = (Math.abs(s.sx - 1) < .005 && Math.abs(s.sy - 1) < .005)
-          ? '' : `${s.sx.toFixed(3)} ${s.sy.toFixed(3)}`;
-        if (sc !== s.sw) { b.style.scale = sc; s.sw = sc; }
-      });
+      aurora.t += dtf / 60;
+      // cursor energy: swirling the mouse feeds churn that decays at rest
+      const mvx = rx - aurora.px, mvy = ry - aurora.py;
+      aurora.px = rx; aurora.py = ry;
+      aurora.energy = Math.min(1,
+        aurora.energy * Math.pow(.95, dtf) + Math.hypot(mvx, mvy) * .0015 * dtf);
+      const cxn = rx / vw, cyn = ry / vh, t = aurora.t;
+      aurCtx.clearRect(0, 0, aurW, aurH);
+      aurCtx.globalCompositeOperation = 'lighter';
+      const step = Math.max(4, aurW / 150 | 0);
+      for (let i = 0; i < aurora.curtains.length; i++) {
+        const c = aurora.curtains[i], g = aurora.grads[i];
+        // parallax: each curtain leans toward the pointer at its own
+        // depth and lag, so the sky reads as layers, not a sticker
+        aurora.sway[i] = lerp(aurora.sway[i], (cxn - .5) * c.sway * aurW, .03 + i * .015);
+        for (let x = 0; x < aurW; x += step) {
+          const xn = (x + aurora.sway[i]) / aurW;
+          const wave = Math.sin(xn * c.f1 * Math.PI + t * c.s1 * 6.283) * c.amp
+                     + Math.sin(xn * c.f2 * Math.PI - t * c.s2 * 6.283) * c.amp * .45;
+          // flare: the curtains rise + brighten around the pointer's x
+          const d = xn - cxn;
+          const flare = Math.exp(-d * d * 34) * (.55 + aurora.energy);
+          const h = c.th * (.72 + .28 * Math.sin(xn * 9 + t * .8)) * (1 + flare * .9) * aurH;
+          const y = (c.base + wave - flare * .06 + (cyn - .5) * .05) * aurH;
+          const ray = .5 + .5 * Math.sin(x * c.rayF / aurW * 6.283 + t * c.rayS + wave * 30);
+          aurCtx.globalAlpha = Math.min(1, (.2 + .3 * ray) * (1 + flare * 1.3));
+          aurCtx.drawImage(g, x, y, step + 1, h);
+        }
+      }
+      aurCtx.globalCompositeOperation = 'source-over';
+      aurCtx.globalAlpha = 1;
     }
 
     // magnet card: title letters orbit the cursor ring and chase it
@@ -1953,6 +1946,68 @@
     marqX -= (e.deltaY + e.deltaX) * .6;
   }, { passive: false });
 
+  /* ── aurora borealis behind the hero ──
+     Three curtains of light drawn every frame (in the rAF loop) onto a
+     1/3-resolution canvas that CSS upscales + blurs. Each curtain is a row
+     of thin vertical strips stretched from a tiny pre-rendered gradient
+     (drawImage from an 8×256 offscreen — never a createLinearGradient per
+     strip), composited 'lighter' so crossings brighten like real curtains.
+     The shape is two incommensurate sines (never repeats); a third, faster
+     sine is the vertical-ray shimmer. The cursor drives it three ways:
+     each curtain sways toward the pointer at its own depth (parallax), a
+     gaussian flare lifts + brightens the sky around the pointer's x, and
+     fast movement feeds an energy term that makes the whole sky churn,
+     decaying once the mouse rests. */
+  const aurCv = document.querySelector('.hero-aurora');
+  const aurCtx = aurCv.getContext('2d');
+  const AUR_SCALE = 3;                       // internal px = CSS px / 3
+  let aurW = 0, aurH = 0;
+  const aurora = { t: 0, energy: 0, px: 0, py: 0, sway: [0, 0, 0], curtains: [], grads: [] };
+  const hexRGB = h => {
+    h = h.trim().slice(1);
+    if (h.length === 3) h = [...h].map(c => c + c).join('');
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  };
+  /* one tiny vertical gradient per curtain colour, rebuilt only on remix:
+     white-hot upper edge → body colour → clear, the classic curtain
+     falloff (bright where the solar wind hits, dissolving below) */
+  function auroraGrads(cols) {
+    aurora.grads = cols.map(c => {
+      const [r, g, b] = hexRGB(c);
+      const cv = document.createElement('canvas');
+      cv.width = 8; cv.height = 256;
+      const x = cv.getContext('2d');
+      const gr = x.createLinearGradient(0, 0, 0, 256);
+      gr.addColorStop(0, `rgba(${r + (255 - r) * .7 | 0},${g + (255 - g) * .7 | 0},${b + (255 - b) * .7 | 0},.9)`);
+      gr.addColorStop(.12, `rgba(${r},${g},${b},.8)`);
+      gr.addColorStop(.55, `rgba(${r},${g},${b},.26)`);
+      gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      x.fillStyle = gr; x.fillRect(0, 0, 8, 256);
+      return cv;
+    });
+  }
+  /* re-rolled by remix() like every other tunable */
+  function auroraRoll(cols) {
+    aurora.curtains = [0, 1, 2].map(i => ({
+      base: rr(.14, .3) + i * .14,                       // hang height
+      amp: rr(.04, .1),                                  // wave amplitude
+      f1: rr(1.6, 3.2), f2: rr(4.2, 7.5),                // wave freqs (incommensurate)
+      /* wave tempo runs glacial on purpose — real aurora drifts, it doesn't
+         wobble; the cursor (sway/flare/energy) is what supplies the fast
+         motion, so the idle sky staying near-still makes the reaction read */
+      s1: rr(.03, .09) * (Math.random() < .5 ? -1 : 1),  // wave speeds
+      s2: rr(.09, .2) * (Math.random() < .5 ? -1 : 1),
+      th: rr(.24, .44),                                  // curtain height
+      rayF: rr(26, 64), rayS: rr(.5, 1.4),               // vertical-ray shimmer
+      sway: rr(.05, .14) * (i + 1),                      // cursor parallax depth
+    }));
+    auroraGrads(cols);
+  }
+  {
+    const cs = getComputedStyle(document.documentElement);
+    auroraRoll(['--accent', '--accent-2', '--accent-3'].map(v => cs.getPropertyValue(v)));
+  }
+
   /* ── perf housekeeping for the rAF loop ──
      The loop never stops, so everything it touches per-frame must be cheap:
      layout numbers are measured once here instead of per-frame (reading
@@ -1978,6 +2033,10 @@
     // transforms centre the bar against this so a scrollbar can't shove the two
     // pills into each other
     st.setProperty('--navw', navEl.getBoundingClientRect().width + 'px');
+    // aurora canvas: internal buffer at 1/3 the hero's box (CSS stretches it
+    // back up; assigning width/height also clears it — next frame repaints)
+    aurW = aurCv.width = Math.ceil(hero.offsetWidth / AUR_SCALE);
+    aurH = aurCv.height = Math.ceil(hero.offsetHeight / AUR_SCALE);
   }
   measure();
   addEventListener('resize', measure);
@@ -2025,12 +2084,6 @@
     '#1a1712', '#121a1a', '#181323', '#191512', '#141921', '#161a11',
   ];
   const variants = ['', 'from-left', 'from-right', 'zoom', 'flip'];
-  const blobs = [...document.querySelectorAll('.blob')];
-  /* per-blob cursor gravity (pull strength) — three different depths;
-     remix re-rolls them. State carries the lerped offset, the previous
-     frame's offset (for the liquid stretch) and the last-written strings. */
-  const blobG = [.08, .14, .22];
-  const blobState = blobs.map(() => ({ x: 0, y: 0, lx: 0, ly: 0, sx: 1, sy: 1, w: '', sw: '' }));
   const words = [...document.querySelectorAll('.hero .word')];
 
   function remix(pal = rand(palettes)) {
@@ -2053,13 +2106,9 @@
     cfg.tilt = rr(6, 26);
     cfg.magnet = rr(0.15, 0.55);
 
-    // reshuffle blobs — size, tempo and how hard each one chases the cursor
-    blobs.forEach((b, i) => {
-      b.style.background = pal[i % 3];
-      b.style.width = b.style.height = Math.round(rr(200, 480)) + 'px';
-      b.style.animationDuration = rr(5, 15).toFixed(1) + 's';
-      blobG[i] = rr(.06, .24);
-    });
+    // aurora: fresh curtains + gradients in the incoming palette — new hang
+    // heights, wave shapes/speeds, shimmer and cursor-parallax depths
+    auroraRoll(pal);
 
     // marquee speed + direction
     marqSpeed = (Math.random() < .5 ? -1 : 1) * rr(.6, 2.2);

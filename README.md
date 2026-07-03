@@ -19,6 +19,12 @@ network requests, so `file://` works too.)
 
 ## Highlights
 
+- **Aurora hero**: the background is a live aurora borealis — three curtains of
+  light drawn per frame on a low-res, blur-upscaled canvas, waving on
+  never-repeating sine pairs with vertical-ray shimmer. It reacts to your
+  mouse: curtains sway in parallax, the sky flares around the pointer, and
+  swirling the cursor feeds energy that churns the whole thing (it calms when
+  you stop). Soft pastel by day; genuinely glowing after dark.
 - **Remix button** (bottom right): idles as a Siri-style orb — a dark glass
   sphere with a hot core and palette-tinted blobs swirling at never-repeating
   periods — then re-rolls the entire page on press: 21 color palettes, spring
