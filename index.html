@@ -1449,7 +1449,7 @@
     <span class="line"><span class="word">Design&nbsp;in</span></span>
     <span class="line"><span class="word accent">motion<span class="dot" id="motionDot" data-hover role="button" tabindex="0" aria-label="Send the word on a lap around the screen">.</span></span></span>
   </h1>
-  <p>A single-page playground of spring physics, scroll choreography, parallax depth and micro-interactions — all hand-rolled, no frameworks.</p>
+  <p>A single-page playground of spring physics, scroll choreography, parallax depth and micro-interactions — all hand-rolled, no frameworks. Don't like the palette? The glowing orb in the corner re-rolls the entire page.</p>
   <div class="cta-row">
     <a class="btn primary magnetic" href="#work" data-hover>Explore the motion</a>
     <a class="btn ghost magnetic" href="#contact" data-hover>Get in touch</a>
@@ -2501,6 +2501,30 @@
     clearTimeout(tipTimer);
     tip.classList.remove('show');
   });
+
+  /* ── first-visit nudge ──
+     The signature feature idles as an anonymous orb in chat-widget
+     territory, behind a 1s hover — highly missable in the 45 seconds a
+     first visit lasts. Once per visitor (localStorage), the tooltip
+     introduces itself unprompted: ~6s after load, shown for ~7s, then
+     gone for good. Touching the button organically — hover, tap, press —
+     counts as "found it" and cancels or retires the nudge, so returning
+     visitors and quick explorers never see unrequested UI. */
+  let nudged = false;
+  try { nudged = localStorage.getItem('remix-nudged') === '1'; } catch (e) { /* file:// may deny */ }
+  const markNudged = () => { nudged = true; try { localStorage.setItem('remix-nudged', '1'); } catch (e) {} };
+  if (!nudged) {
+    const nudgeTimer = setTimeout(() => {
+      if (wiping || tip.classList.contains('show')) { markNudged(); return; }
+      markNudged();
+      tip.classList.add('show');
+      setTimeout(() => {
+        // don't yank it away mid-read if the pointer made it to the button
+        if (!remixBtn.matches(':hover')) tip.classList.remove('show');
+      }, 7000);
+    }, 6000);
+    remixBtn.addEventListener('pointerenter', () => { clearTimeout(nudgeTimer); markNudged(); }, { once: true });
+  }
 
   /* ── night mode (html.night + the nav switch) ──
      CSS owns the remap; JS only flips the class — except --paper, which
