@@ -31,7 +31,15 @@
        accents and re-tint through them */
     --hero-accent: var(--accent);
     --hero-accent-2: var(--accent-2);
-    --grey: #6b7280;
+    /* accent used as SMALL text ink (the footer kicker): floored by mixing
+       toward ink so all 21 remixable accents clear 4.5:1 on every day paper
+       (worst case 4.9 — verified across the full palette × paper matrix);
+       html.night remaps it toward white for the same guarantee on charcoal */
+    --accent-ink: color-mix(in srgb, var(--accent) 72%, var(--ink));
+    /* #5f6672, not the old #6b7280: captions sit on near-white papers where
+       the classic slate grey bottomed out at ~4.4:1 (sub-AA on the blush) —
+       this clears 5.1:1 on the lightest paper in the remix set */
+    --grey: #5f6672;
     --radius: 20px;
     --spring: cubic-bezier(.22, 1.4, .36, 1);
     --ease-out: cubic-bezier(.16, 1, .3, 1);
@@ -84,6 +92,10 @@
     color-scheme: dark;
     --hero-accent: color-mix(in srgb, var(--accent) 55%, #fff);
     --hero-accent-2: color-mix(in srgb, var(--accent-2) 65%, #fff);
+    /* deep accents (slate ink!) stay unreadable on charcoal even mixed with
+       light ink — white does the lifting: worst case 5.5:1 on the darkest
+       night paper across all 21 accents */
+    --accent-ink: color-mix(in srgb, var(--accent) 48%, #fff);
     --ink: #edeae4;
     --paper: #1c1318;   /* the blush day default's after-dark twin */
     /* brighter than a naive day-grey flip: captions read against lifted
@@ -421,6 +433,13 @@
     color: color-mix(in srgb, var(--ink) 75%, var(--grey));
     text-shadow: 0 1px 14px rgba(10, 8, 12, .8), 0 0 3px rgba(10, 8, 12, .55);
   }
+  /* the gradient word needs the same scrim when a bright curtain drifts
+     behind it — but text-shadow paints OVER a background-clipped fill
+     (hiding the gradient), so the halo is a drop-shadow of the rendered
+     glyphs instead (filter on the word box) */
+  html.night .hero h1 .word.accent {
+    filter: drop-shadow(0 1px 12px rgba(10, 8, 12, .7));
+  }
   @keyframes fade-up {
     to { opacity: 1; transform: translateY(0); }
   }
@@ -572,7 +591,8 @@
      grammar, so the section copies were removed. Don't reintroduce them. */
   .eyebrow {
     font-size: 13px; font-weight: 700; letter-spacing: .22em;
-    text-transform: uppercase; color: var(--accent);
+    text-transform: uppercase;
+    color: var(--accent-ink);   /* floored accent — raw var(--accent) dipped to ~3.2:1 at this size */
     margin-bottom: 16px;
   }
   h2.title {
@@ -1425,7 +1445,9 @@
     color: var(--ink); text-decoration: none;
     transition: letter-spacing .5s var(--spring), color .3s ease;
   }
-  .mega-link:hover { letter-spacing: .04em; color: var(--accent); }
+  /* --hero-accent, not --accent: at night a deep accent (slate ink) would
+     vanish into the charcoal exactly when the link lights up */
+  .mega-link:hover { letter-spacing: .04em; color: var(--hero-accent); }
 
   /* ───────── responsive (mobile ↔ desktop, and every zoom level) ─────────
      Width breakpoints, not device detection: browser zoom shrinks the
