@@ -142,7 +142,10 @@
   /* ───────── nav ───────── */
   nav {
     position: fixed; top: 0; left: 0; right: 0;
-    display: flex; justify-content: space-between; align-items: center;
+    /* stretch (not center) so the two pills always render the SAME height —
+       the logo's 18px line-box and the links pill's anchor/switch stack settle
+       ~1px apart otherwise, which shows as a step at the merged seam */
+    display: flex; justify-content: space-between; align-items: stretch;
     padding: 16px 28px;
     z-index: 900;
     color: var(--ink);
@@ -182,12 +185,17 @@
      width arrives via --logo-w/--links-w, measured in measure() — fallbacks
      only cover the pre-script first frame. On scroll the transforms release
      and the pills spring back apart to the edges. */
+  /* centre against the nav's CONTENT box (--navw, set in measure()), NOT 50vw:
+     vw includes the scrollbar but the % widths / space-between layout do not,
+     so when a scrollbar is present the two disagree by the scrollbar width and
+     the pills slide into each other (~15px overlap → doubled glass seam).
+     --navw is scrollbar-exact; 100vw is only the pre-script fallback. */
   nav:not(.scrolled) .logo  {
-    transform: translateX(calc(50vw - 50% - var(--links-w, 350px) / 2 - 28px));
+    transform: translateX(calc(var(--navw, 100vw) / 2 - 50% - var(--links-w, 350px) / 2 - 28px));
     border-radius: 100px 0 0 100px;
   }
   nav:not(.scrolled) .links {
-    transform: translateX(calc(50% + var(--logo-w, 162px) / 2 - 50vw + 28px));
+    transform: translateX(calc(50% + var(--logo-w, 162px) / 2 - var(--navw, 100vw) / 2 + 28px));
     border-radius: 0 100px 100px 0;
   }
   /* a single thin underline that glides from item to item on the spring —
@@ -335,8 +343,11 @@
     z-index: -1;
     box-sizing: border-box;   /* the * reset doesn't reach pseudo-elements */
     width: .3em; height: .3em;
-    margin-left: -.235em;  /* back from after-the-glyph onto its ink */
-    bottom: .03em;         /* the period's dot sits just above the baseline */
+    /* offsets are canvas-measured: the ring is centred on the period's actual
+       ink centroid (measureText actualBoundingBox in the rendered font), not on
+       the glyph advance box — the period's ink sits low and right of that box */
+    margin-left: -.273em;
+    bottom: -.004em;
     border: .075em solid var(--accent-2);
     border-radius: 50%;
     filter: blur(.04em);   /* soft glow, not a hard line */
@@ -1963,6 +1974,10 @@
     const st = document.documentElement.style;
     st.setProperty('--logo-w', document.querySelector('nav .logo').offsetWidth + 'px');
     st.setProperty('--links-w', navLinksEl.offsetWidth + 'px');
+    // nav's content-box width (excludes the scrollbar, unlike 50vw) — the merge
+    // transforms centre the bar against this so a scrollbar can't shove the two
+    // pills into each other
+    st.setProperty('--navw', navEl.getBoundingClientRect().width + 'px');
   }
   measure();
   addEventListener('resize', measure);
